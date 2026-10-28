@@ -11,7 +11,13 @@ const LIGHT = {
 } satisfies Record<Light, { label: string; dot: string; text: string }>;
 
 export function Dot({ color, className = "" }: { color: string; className?: string }) {
-  return <span aria-hidden className={`inline-block size-2 shrink-0 rounded-full ${className}`} style={{ background: color }} />;
+  return (
+    <span
+      aria-hidden
+      className={`inline-block size-2 shrink-0 rounded-full ${className}`}
+      style={{ background: color }}
+    />
+  );
 }
 
 export function Verdict({ light }: { light: Light }) {
@@ -47,9 +53,15 @@ export function ChoiceMatrix({ labels, cols }: { labels: string[]; cols: Col[] }
     <div role="table" aria-label="Wahrscheinlichkeit je Option und Modell">
       {cols.length > 1 && (
         <div role="row" className="grid items-end gap-x-3 pb-2" style={{ gridTemplateColumns: template }}>
-          <span role="columnheader"><span className="sr-only">Option</span></span>
+          <span role="columnheader">
+            <span className="sr-only">Option</span>
+          </span>
           {cols.map((c) => (
-            <span key={c.key} role="columnheader" className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <span
+              key={c.key}
+              role="columnheader"
+              className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground"
+            >
               <Dot color={c.color} />
               <span className="truncate">{c.name}</span>
             </span>
@@ -57,12 +69,22 @@ export function ChoiceMatrix({ labels, cols }: { labels: string[]; cols: Col[] }
         </div>
       )}
       {labels.map((l, i) => (
-        <div key={i} role="row" className="grid items-center gap-x-3 border-t border-border py-[3px]" style={{ gridTemplateColumns: template }}>
+        <div
+          key={i}
+          role="row"
+          className="grid items-center gap-x-3 border-t border-border py-[3px]"
+          style={{ gridTemplateColumns: template }}
+        >
           <span role="rowheader" className="truncate pr-2 text-[13px] text-muted-foreground" title={l}>
             {l}
           </span>
           {cols.map((c) => {
-            if (!c.probs) return <span key={c.key} role="cell" className="px-2 text-faint">–</span>;
+            if (!c.probs)
+              return (
+                <span key={c.key} role="cell" className="px-2 text-faint">
+                  –
+                </span>
+              );
             const top = c.probs.indexOf(Math.max(...c.probs)) === i;
             return (
               <div key={c.key} role="cell" className="relative h-6 overflow-hidden rounded-[3px]">
@@ -73,9 +95,17 @@ export function ChoiceMatrix({ labels, cols }: { labels: string[]; cols: Col[] }
                   animate={{ width: `${c.probs[i] * 100}%` }}
                   transition={spring}
                 />
-                {top && <span aria-hidden className="absolute inset-y-0 left-0 w-[2px]" style={{ background: c.color }} />}
-                <span aria-hidden className="absolute inset-y-0 w-px border-l border-dashed border-foreground/25" style={{ left: `${100 / k}%` }} />
-                <span className={`relative flex h-full items-center px-2 tabular-nums ${top ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
+                {top && (
+                  <span aria-hidden className="absolute inset-y-0 left-0 w-[2px]" style={{ background: c.color }} />
+                )}
+                <span
+                  aria-hidden
+                  className="absolute inset-y-0 w-px border-l border-dashed border-foreground/25"
+                  style={{ left: `${100 / k}%` }}
+                />
+                <span
+                  className={`relative flex h-full items-center px-2 tabular-nums ${top ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+                >
                   {fmtPct(c.probs[i])}
                 </span>
               </div>
@@ -94,12 +124,20 @@ export function ChoiceMatrix({ labels, cols }: { labels: string[]; cols: Col[] }
 /** P(wahr) auf einer Skala, die Zone 0,3–0,7 gilt als „unklar“. */
 export function NoulScale({ pTrue, color }: { pTrue: number; color: string }) {
   const [lo, hi] = NOUL_BAND;
-  const ticks: [number, string][] = [[0, "0"], [lo, "0,3"], [hi, "0,7"], [1, "1"]];
+  const ticks: [number, string][] = [
+    [0, "0"],
+    [lo, "0,3"],
+    [hi, "0,7"],
+    [1, "1"],
+  ];
   return (
     <div role="img" aria-label={`P(wahr) ${fmtPct(pTrue)}, Zone unklar zwischen 0,3 und 0,7`}>
       <div className="relative h-5">
         <div className="absolute inset-x-0 top-2 h-1.5 overflow-hidden rounded-full bg-accent">
-          <div className="hatch absolute inset-y-0 bg-warn-soft" style={{ left: `${lo * 100}%`, width: `${(hi - lo) * 100}%` }} />
+          <div
+            className="hatch absolute inset-y-0 bg-warn-soft"
+            style={{ left: `${lo * 100}%`, width: `${(hi - lo) * 100}%` }}
+          />
         </div>
         <motion.div
           className="absolute top-0 h-5 w-[3px] -translate-x-1/2 rounded-full"
@@ -109,7 +147,7 @@ export function NoulScale({ pTrue, color }: { pTrue: number; color: string }) {
           transition={spring}
         />
       </div>
-      <div className="relative h-4 text-[11px] tabular-nums text-faint">
+      <div className="relative h-4 text-[11px] text-faint tabular-nums">
         {ticks.map(([v, t]) => (
           <span
             key={t}
@@ -122,7 +160,9 @@ export function NoulScale({ pTrue, color }: { pTrue: number; color: string }) {
       </div>
       <div className="relative h-4 text-[11px] text-faint">
         <span className="absolute left-0">Nein</span>
-        <span className="absolute -translate-x-1/2 text-warn" style={{ left: `${((lo + hi) / 2) * 100}%` }}>unklar</span>
+        <span className="absolute -translate-x-1/2 text-warn" style={{ left: `${((lo + hi) / 2) * 100}%` }}>
+          unklar
+        </span>
         <span className="absolute right-0">Ja</span>
       </div>
     </div>
@@ -139,11 +179,19 @@ export function ScoreChart({ probs, color, low, high }: { probs: number[]; color
   const H = 72;
   return (
     <div>
-      <div role="img" aria-label={`Verteilung über ${n} Level, Modus ${mode + 1}, Erwartungswert ${fmtNum(e)}`} className="relative">
+      <div
+        role="img"
+        aria-label={`Verteilung über ${n} Level, Modus ${mode + 1}, Erwartungswert ${fmtNum(e)}`}
+        className="relative"
+      >
         <div className="flex items-end gap-1" style={{ height: H + 16 }}>
           {probs.map((p, i) => (
             <div key={i} className="flex h-full flex-1 flex-col items-center justify-end">
-              <span className={`mb-0.5 text-[11px] tabular-nums ${i === mode ? "font-semibold text-foreground" : "text-faint"}`}>{fmtPct(p, 0)}</span>
+              <span
+                className={`mb-0.5 text-[11px] tabular-nums ${i === mode ? "font-semibold text-foreground" : "text-faint"}`}
+              >
+                {fmtPct(p, 0)}
+              </span>
               <motion.div
                 className="w-full rounded-t-[3px]"
                 style={{ background: i === mode ? color : tint(color, 28) }}
@@ -154,16 +202,24 @@ export function ScoreChart({ probs, color, low, high }: { probs: number[]; color
             </div>
           ))}
         </div>
-        <div aria-hidden className="pointer-events-none absolute inset-y-0 border-l border-dashed border-foreground/50" style={{ left: `${((e - 0.5) / n) * 100}%` }} />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 border-l border-dashed border-foreground/50"
+          style={{ left: `${((e - 0.5) / n) * 100}%` }}
+        />
       </div>
-      <div className="flex gap-1 border-t border-border pt-1 text-[11px] tabular-nums text-muted-foreground">
+      <div className="flex gap-1 border-t border-border pt-1 text-[11px] text-muted-foreground tabular-nums">
         {probs.map((_, i) => (
-          <span key={i} className="flex-1 text-center">{i + 1}</span>
+          <span key={i} className="flex-1 text-center">
+            {i + 1}
+          </span>
         ))}
       </div>
       <div className="mt-0.5 flex justify-between text-[11px] text-faint">
         <span>1 = {low}</span>
-        <span>{n} = {high}</span>
+        <span>
+          {n} = {high}
+        </span>
       </div>
       {peaks && (
         <p className="mt-2 rounded-md bg-warn-soft px-2.5 py-1.5 text-xs text-warn">

@@ -6,7 +6,14 @@ import { useSyncExternalStore } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverDescription, PopoverHeader, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { SimulatedError } from "@/lib/mock-run";
@@ -29,7 +36,11 @@ const SIMULATIONS = [
 export function Toolbar(p: Props) {
   const { resolvedTheme, setTheme } = useTheme();
   // Das Theme steht erst im Browser fest; bis zur Hydration gilt "hell", damit Server und Client übereinstimmen.
-  const mounted = useSyncExternalStore(noop, () => true, () => false);
+  const mounted = useSyncExternalStore(
+    noop,
+    () => true,
+    () => false,
+  );
   const dark = mounted && resolvedTheme === "dark";
 
   return (
@@ -44,7 +55,12 @@ export function Toolbar(p: Props) {
             render={
               <PopoverTrigger
                 render={
-                  <Button variant="ghost" size="icon" aria-label="Fehler simulieren" className={p.simulate !== "none" ? "text-warn" : "text-muted-foreground"} />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Fehler simulieren"
+                    className={p.simulate !== "none" ? "text-warn" : "text-muted-foreground"}
+                  />
                 }
               />
             }
@@ -56,9 +72,15 @@ export function Toolbar(p: Props) {
         <PopoverContent align="end" className="w-64">
           <PopoverHeader>
             <PopoverTitle>Fehler simulieren</PopoverTitle>
-            <PopoverDescription>Betrifft das zuletzt gewählte Modell. Fehler erscheinen nie als Antwort.</PopoverDescription>
+            <PopoverDescription>
+              Betrifft das zuletzt gewählte Modell. Fehler erscheinen nie als Antwort.
+            </PopoverDescription>
           </PopoverHeader>
-          <RadioGroup value={p.simulate} onValueChange={(v) => p.onSimulate(v as SimulatedError)} aria-label="Fehlerart">
+          <RadioGroup
+            value={p.simulate}
+            onValueChange={(v) => p.onSimulate(v as SimulatedError)}
+            aria-label="Fehlerart"
+          >
             {SIMULATIONS.map(([v, label]) => (
               <Label key={v} className="flex cursor-pointer items-center gap-2 font-normal">
                 <RadioGroupItem value={v} />

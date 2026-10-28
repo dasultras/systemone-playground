@@ -9,7 +9,7 @@ const sans = Instrument_Sans({ variable: "--font-instrument", subsets: ["latin"]
 const mono = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Decision Playground",
+  title: "System One Playground",
   description: "Sandbox zum Testen von System-One-Modellen: Jev und lokale Modelle nebeneinander.",
 };
 
@@ -28,7 +28,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <TooltipProvider>
             <a
               href="#ergebnis"
-              className="fixed left-3 top-3 z-50 -translate-y-16 rounded-md bg-primary px-3 py-2 text-primary-foreground focus:translate-y-0"
+              className="fixed top-3 left-3 z-50 -translate-y-16 rounded-md bg-primary px-3 py-2 text-primary-foreground focus:translate-y-0"
             >
               Zum Ergebnis springen
             </a>

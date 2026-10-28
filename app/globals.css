@@ -184,7 +184,11 @@
 }
 
 .hatch {
-  background-image: repeating-linear-gradient(135deg, transparent 0 5px, color-mix(in srgb, var(--warn) 22%, transparent) 5px 6px);
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0 5px,
+    color-mix(in srgb, var(--warn) 22%, transparent) 5px 6px
+  );
 }
 
 @media (prefers-reduced-motion: reduce) {

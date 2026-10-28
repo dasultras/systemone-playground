@@ -67,13 +67,15 @@ export function Inspector({ open, onOpenChange, models, states, modelId, onModel
                     <Button
                       variant="secondary"
                       size="icon-sm"
-                      className="absolute right-2 top-2"
+                      className="absolute top-2 right-2"
                       onClick={() => copy(tab, json)}
                       aria-label={copied === tab ? "Kopiert" : "JSON kopieren"}
                     >
                       {copied === tab ? <Check aria-hidden className="text-ok" /> : <Copy aria-hidden />}
                     </Button>
-                    <pre className="h-full overflow-auto rounded-md bg-muted p-4 font-mono text-xs leading-relaxed">{json}</pre>
+                    <pre className="h-full overflow-auto rounded-md bg-muted p-4 font-mono text-xs leading-relaxed">
+                      {json}
+                    </pre>
                   </>
                 ) : (
                   <p className="grid h-full place-items-center rounded-md border border-dashed border-input text-muted-foreground">

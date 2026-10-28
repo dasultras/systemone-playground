@@ -54,7 +54,17 @@ type Props = {
   onRun: () => void;
 };
 
-function Section({ title, aside, children, className = "" }: { title: string; aside?: React.ReactNode; children: React.ReactNode; className?: string }) {
+function Section({
+  title,
+  aside,
+  children,
+  className = "",
+}: {
+  title: string;
+  aside?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
     <section className={`px-5 py-4 ${className}`}>
       <div className="mb-2 flex items-baseline justify-between gap-3">
@@ -125,12 +135,13 @@ export function InputPanel(p: Props) {
             <Label htmlFor="state" className="text-[13px] font-semibold">
               State
             </Label>
-            <span className="text-xs tabular-nums text-muted-foreground" title="Schätzung: Zeichen geteilt durch 2,6">
+            <span className="text-xs text-muted-foreground tabular-nums" title="Schätzung: Zeichen geteilt durch 2,6">
               ≈&nbsp;{fmtInt(tokens)} Tokens
             </span>
           </div>
           <p id="state-hint" className="mb-2 text-xs text-muted-foreground">
-            Der Kontext, den das Modell liest.{p.mode === "multi" ? " Er gilt für alle Fragen." : " Nur relevante Felder, kürzen statt vergrößern."}
+            Der Kontext, den das Modell liest.
+            {p.mode === "multi" ? " Er gilt für alle Fragen." : " Nur relevante Felder, kürzen statt vergrößern."}
           </p>
           <Textarea
             id="state"
@@ -149,8 +160,12 @@ export function InputPanel(p: Props) {
             <div className="mt-2 flex flex-wrap items-center gap-1">
               <span className="sr-only">Vom Code berechnete Fakten:</span>
               {p.facts.map((f) => (
-                <Badge key={f.key} variant="outline" className="h-auto rounded-sm py-0.5 font-mono text-[11px] font-normal text-muted-foreground">
-                  {f.key} <span className="font-sans font-semibold tabular-nums text-foreground">{f.value}</span>
+                <Badge
+                  key={f.key}
+                  variant="outline"
+                  className="h-auto rounded-sm py-0.5 font-mono text-[11px] font-normal text-muted-foreground"
+                >
+                  {f.key} <span className="font-sans font-semibold text-foreground tabular-nums">{f.value}</span>
                 </Badge>
               ))}
               <span className="ml-1 text-xs text-faint">vom Code berechnet</span>
@@ -170,16 +185,22 @@ export function InputPanel(p: Props) {
                 multi={p.mode === "multi"}
                 invalid={p.invalid?.id === `q-${q.id}`}
                 onChange={(patch) => update(q.id, patch)}
-                onRemove={p.questions.length > 1 ? () => p.onQuestions(p.questions.filter((x) => x.id !== q.id)) : undefined}
+                onRemove={
+                  p.questions.length > 1 ? () => p.onQuestions(p.questions.filter((x) => x.id !== q.id)) : undefined
+                }
               />
             ))}
           </div>
           {p.mode === "multi" && (
             <div className="mt-3 flex items-center justify-between">
-              <Button variant="outline" onClick={() => p.onQuestions([...p.questions, newQuestion("noul")])} disabled={p.questions.length >= MAX_QUESTIONS}>
+              <Button
+                variant="outline"
+                onClick={() => p.onQuestions([...p.questions, newQuestion("noul")])}
+                disabled={p.questions.length >= MAX_QUESTIONS}
+              >
                 <Plus aria-hidden /> Frage hinzufügen
               </Button>
-              <span className="text-xs tabular-nums text-muted-foreground">
+              <span className="text-xs text-muted-foreground tabular-nums">
                 {p.questions.length} von {MAX_QUESTIONS}
               </span>
             </div>
@@ -188,7 +209,10 @@ export function InputPanel(p: Props) {
 
         <Separator />
 
-        <Section title="Modelle" aside={<span className="text-xs text-muted-foreground">bis zu {MAX_MODELS} zum Vergleich</span>}>
+        <Section
+          title="Modelle"
+          aside={<span className="text-xs text-muted-foreground">bis zu {MAX_MODELS} zum Vergleich</span>}
+        >
           <ul className="-mx-2" aria-label="Modelle">
             {MODELS.map((m) => {
               const on = p.models.includes(m.id);
@@ -201,7 +225,12 @@ export function InputPanel(p: Props) {
                     htmlFor={id}
                     className={`flex min-h-10 items-center gap-2.5 rounded-md px-2 py-1 font-normal ${locked ? "opacity-60" : "cursor-pointer hover:bg-muted"}`}
                   >
-                    <Checkbox id={id} checked={on} disabled={locked} onCheckedChange={(v) => setModel(m.id, v === true)} />
+                    <Checkbox
+                      id={id}
+                      checked={on}
+                      disabled={locked}
+                      onCheckedChange={(v) => setModel(m.id, v === true)}
+                    />
                     <Dot color={m.color} />
                     <span className="min-w-0 flex-1 leading-tight">
                       <span className="block truncate text-[13px] font-medium">{m.label}</span>
@@ -209,7 +238,9 @@ export function InputPanel(p: Props) {
                         {m.backend === "typesafe" ? "TypeSafe, gehostet" : "Ollama, lokal"} · {m.size}
                       </span>
                     </span>
-                    <span className={`text-xs tabular-nums ${over ? "font-medium text-destructive" : "text-muted-foreground"}`}>
+                    <span
+                      className={`text-xs tabular-nums ${over ? "font-medium text-destructive" : "text-muted-foreground"}`}
+                    >
                       {fmtInt(tokens)} / {fmtInt(m.contextTokens)}
                       {over && <span className="sr-only"> überschreitet das Limit</span>}
                     </span>
@@ -221,7 +252,9 @@ export function InputPanel(p: Props) {
           {hosted && (
             <Alert className="mt-2 border-warn/40 bg-warn-soft text-warn">
               <TriangleAlert aria-hidden />
-              <AlertDescription className="text-warn">TypeSafe hostet in den USA. Nur synthetische Daten senden, keine echten Inventurdaten.</AlertDescription>
+              <AlertDescription className="text-warn">
+                TypeSafe hostet in den USA. Nur synthetische Daten senden, keine echten Inventurdaten.
+              </AlertDescription>
             </Alert>
           )}
         </Section>
@@ -231,7 +264,9 @@ export function InputPanel(p: Props) {
         <section className={`flex items-center justify-between gap-3 px-5 py-4 ${hasChoice ? "" : "opacity-55"}`}>
           <div>
             <h2 className="text-[13px] font-semibold">Reihenfolge mitteln</h2>
-            <p className="text-xs text-muted-foreground">Verschiebt Optionen zyklisch, gegen Positions-Bias. Nur Choice.</p>
+            <p className="text-xs text-muted-foreground">
+              Verschiebt Optionen zyklisch, gegen Positions-Bias. Nur Choice.
+            </p>
           </div>
           <Segmented
             label="Reihenfolge mitteln"
@@ -326,7 +361,9 @@ function QuestionEditor({
       <div className="mt-3">
         {q.type === "choice" && (
           <>
-            <p className="mb-1.5 text-xs text-muted-foreground">Das Modell verteilt Wahrscheinlichkeit auf 2 bis {MAX_OPTIONS} Optionen.</p>
+            <p className="mb-1.5 text-xs text-muted-foreground">
+              Das Modell verteilt Wahrscheinlichkeit auf 2 bis {MAX_OPTIONS} Optionen.
+            </p>
             <ul className="space-y-1">
               {q.options.map((o, i) => (
                 <li key={i} className="group relative">
@@ -344,7 +381,7 @@ function QuestionEditor({
                       size="icon-xs"
                       onClick={() => onChange({ options: q.options.filter((_, j) => j !== i) })}
                       aria-label={`Option ${i + 1} entfernen`}
-                      className="absolute right-1 top-1 text-muted-foreground opacity-0 hover:text-destructive focus-visible:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100"
+                      className="absolute top-1 right-1 text-muted-foreground opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100"
                     >
                       <X aria-hidden />
                     </Button>
@@ -353,19 +390,30 @@ function QuestionEditor({
               ))}
             </ul>
             <div className="mt-1.5 flex items-center justify-between">
-              <Button variant="ghost" size="sm" onClick={() => onChange({ options: [...q.options, ""] })} disabled={q.options.length >= MAX_OPTIONS}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onChange({ options: [...q.options, ""] })}
+                disabled={q.options.length >= MAX_OPTIONS}
+              >
                 <Plus aria-hidden /> Option
               </Button>
-              <span className="text-xs tabular-nums text-muted-foreground">
+              <span className="text-xs text-muted-foreground tabular-nums">
                 {q.options.length} von {MAX_OPTIONS}
               </span>
             </div>
           </>
         )}
-        {q.type === "noul" && <p className="text-xs text-muted-foreground">Das Modell liefert P(wahr). Zwischen 0,3 und 0,7 gilt die Antwort als unklar.</p>}
+        {q.type === "noul" && (
+          <p className="text-xs text-muted-foreground">
+            Das Modell liefert P(wahr). Zwischen 0,3 und 0,7 gilt die Antwort als unklar.
+          </p>
+        )}
         {q.type === "score" && (
           <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">Verteilung über 2 bis 10 Level, angezeigt mit Modus und Erwartungswert.</p>
+            <p className="text-xs text-muted-foreground">
+              Verteilung über 2 bis 10 Level, angezeigt mit Modus und Erwartungswert.
+            </p>
             <div className="flex items-center gap-2">
               <Label htmlFor={`${id}-levels`} className="text-xs font-normal text-muted-foreground">
                 Level
@@ -380,11 +428,21 @@ function QuestionEditor({
                 onChange={(e) => onChange({ levels: Math.min(10, Math.max(2, Number(e.target.value) || 2)) })}
                 className="w-14 text-center tabular-nums"
               />
-              <Input value={q.scoreLow} onChange={(e) => onChange({ scoreLow: e.target.value })} aria-label="Bezeichnung Level 1" autoComplete="off" />
+              <Input
+                value={q.scoreLow}
+                onChange={(e) => onChange({ scoreLow: e.target.value })}
+                aria-label="Bezeichnung Level 1"
+                autoComplete="off"
+              />
               <span aria-hidden className="text-faint">
                 bis
               </span>
-              <Input value={q.scoreHigh} onChange={(e) => onChange({ scoreHigh: e.target.value })} aria-label="Bezeichnung höchstes Level" autoComplete="off" />
+              <Input
+                value={q.scoreHigh}
+                onChange={(e) => onChange({ scoreHigh: e.target.value })}
+                aria-label="Bezeichnung höchstes Level"
+                autoComplete="off"
+              />
             </div>
           </div>
         )}

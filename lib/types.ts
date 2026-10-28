@@ -17,11 +17,7 @@ export type Question = {
   mockSecond?: number;
 };
 
-export type ModelId =
-  | "jev-latest"
-  | "elephant-1:9b-q4-ctx8k"
-  | "clef-flash"
-  | "pplx-decider";
+export type ModelId = "jev-latest" | "elephant-1:9b-q4-ctx8k" | "clef-flash" | "pplx-decider";
 
 export type ModelInfo = {
   id: ModelId;
@@ -88,9 +84,7 @@ export type ModelRun = {
 };
 
 export type ModelState =
-  | { status: "idle" }
-  | { status: "running"; startedAt: number }
-  | { status: "done"; run: ModelRun };
+  { status: "idle" } | { status: "running"; startedAt: number } | { status: "done"; run: ModelRun };
 
 export type HistoryEntry = {
   id: string;

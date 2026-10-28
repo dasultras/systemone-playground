@@ -46,10 +46,13 @@ export function AppSidebar({ history, activeId, onSelect, onNew, onDelete, onExp
     <Sidebar aria-label="Verlauf">
       <SidebarHeader className="gap-2">
         <div className="flex h-7 items-center gap-2 px-2">
-          <span aria-hidden className="grid size-5 place-items-center rounded-[5px] bg-primary text-[11px] font-bold leading-none text-primary-foreground">
-            d
+          <span
+            aria-hidden
+            className="grid size-5 place-items-center rounded-[5px] bg-primary text-[11px] leading-none font-bold text-primary-foreground"
+          >
+            s
           </span>
-          <span className="text-[13px] font-semibold">Decision Playground</span>
+          <span className="text-[13px] font-semibold">System One Playground</span>
         </div>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -116,7 +119,11 @@ export function AppSidebar({ history, activeId, onSelect, onNew, onDelete, onExp
                           </span>
                         </span>
                       </SidebarMenuButton>
-                      <SidebarMenuAction showOnHover onClick={() => onDelete(h.id)} aria-label={`Lauf „${h.title}“ löschen`}>
+                      <SidebarMenuAction
+                        showOnHover
+                        onClick={() => onDelete(h.id)}
+                        aria-label={`Lauf „${h.title}“ löschen`}
+                      >
                         <X aria-hidden />
                       </SidebarMenuAction>
                     </SidebarMenuItem>

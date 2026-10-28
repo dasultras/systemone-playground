@@ -3,15 +3,12 @@ import type { Light, Metrics } from "./types";
 /** Einheitliche Kennzahlen für alle Modelle (TypeSafe-Definition von confidence). */
 export function computeMetrics(probs: number[]): Metrics {
   const k = probs.length;
-  const ranked = probs.map((p, i) => ({ p, i })).sort((a, b) => b.p - a.p);
+  const ranked = probs.map((p, i) => ({ p, i })).toSorted((a, b) => b.p - a.p);
   const pMax = ranked[0]?.p ?? 0;
   const p2 = ranked[1]?.p ?? 0;
   const confidence = k > 1 ? (pMax - 1 / k) / (1 - 1 / k) : 1;
   const margin = pMax - p2;
-  const entropy =
-    k > 1
-      ? -probs.reduce((s, p) => s + (p > 0 ? p * Math.log(p) : 0), 0) / Math.log(k)
-      : 0;
+  const entropy = k > 1 ? -probs.reduce((s, p) => s + (p > 0 ? p * Math.log(p) : 0), 0) / Math.log(k) : 0;
   return {
     k,
     topIndex: ranked[0]?.i ?? 0,
@@ -51,12 +48,14 @@ export function bimodalPeaks(probs: number[]): [number, number] | null {
     if (probs[i] >= 0.2 && probs[i] > l && probs[i] >= r) peaks.push(i);
   }
   if (peaks.length < 2) return null;
-  const [a, b] = peaks.sort((x, y) => probs[y] - probs[x]).slice(0, 2).sort((x, y) => x - y);
+  const [a, b] = peaks
+    .toSorted((x, y) => probs[y] - probs[x])
+    .slice(0, 2)
+    .toSorted((x, y) => x - y);
   const valley = Math.min(...probs.slice(a, b + 1));
   return valley < 0.6 * Math.min(probs[a], probs[b]) ? [a + 1, b + 1] : null;
 }
 
-export const fmtPct = (p: number, digits = 1) =>
-  `${(p * 100).toFixed(digits).replace(".", ",")} %`;
+export const fmtPct = (p: number, digits = 1) => `${(p * 100).toFixed(digits).replace(".", ",")} %`;
 
 export const fmtNum = (n: number, digits = 2) => n.toFixed(digits).replace(".", ",");

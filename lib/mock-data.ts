@@ -213,7 +213,7 @@ export const PRESETS: Preset[] = [
     mode: "single",
     badge: "CHOICE",
     state:
-      "The customer says: \"I was charged twice for my monthly subscription and I need one of the duplicate charges refunded.\"",
+      'The customer says: "I was charged twice for my monthly subscription and I need one of the duplicate charges refunded."',
     facts: [],
     questions: [
       q("q1", {

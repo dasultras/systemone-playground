@@ -16,6 +16,13 @@ import { Toolbar } from "./toolbar";
 
 const FIRST = PRESETS[0];
 
+type Timers = { current: ReturnType<typeof setTimeout>[] };
+
+function clearTimers(timers: Timers) {
+  timers.current.forEach(clearTimeout);
+  timers.current = [];
+}
+
 export function Playground() {
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [inspectModel, setInspectModel] = useState<ModelId>(DEFAULT_MODEL);
@@ -35,16 +42,12 @@ export function Playground() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  const clearTimers = () => {
-    timers.current.forEach(clearTimeout);
-    timers.current = [];
-  };
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
   const running = models.some((m) => states[m]?.status === "running");
 
   const reset = () => {
-    clearTimers();
+    clearTimers(timers);
     setStates({});
     setActiveId(null);
     setInvalid(null);
@@ -83,7 +86,7 @@ export function Playground() {
       document.getElementById(bad.id)?.focus();
       return;
     }
-    clearTimers();
+    clearTimers(timers);
     const started = Date.now();
     const snapshot = { state, facts, questions, average };
     const lastModel = models[models.length - 1];

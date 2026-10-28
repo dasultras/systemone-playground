@@ -43,8 +43,23 @@ export function toJson(entries: HistoryEntry[]): string {
   return JSON.stringify(entries, null, 2);
 }
 
+const csvCell = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+
 export function toCsv(entries: HistoryEntry[]): string {
-  const head = ["run", "zeit", "modell", "frage", "typ", "antwort", "p_max", "confidence", "margin", "entropie", "latenz_ms", "fehler"];
+  const head = [
+    "run",
+    "zeit",
+    "modell",
+    "frage",
+    "typ",
+    "antwort",
+    "p_max",
+    "confidence",
+    "margin",
+    "entropie",
+    "latenz_ms",
+    "fehler",
+  ];
   const rows: (string | number)[][] = [];
   for (const e of entries) {
     for (const r of e.runs) {
@@ -67,8 +82,7 @@ export function toCsv(entries: HistoryEntry[]): string {
       }
     }
   }
-  const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
-  return [head, ...rows].map((r) => r.map(esc).join(",")).join("\n");
+  return [head, ...rows].map((r) => r.map(csvCell).join(",")).join("\n");
 }
 
 export function download(name: string, content: string, mime: string) {

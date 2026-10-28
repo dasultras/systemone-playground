@@ -52,7 +52,12 @@ export function OutputPanel({ questions, models, states, rule, onInspect, toolba
   const singleError = only?.status === "done" && only.run.error ? only.run : null;
 
   return (
-    <section id="ergebnis" tabIndex={-1} aria-labelledby="ergebnis-h" className="flex min-w-0 shrink-0 flex-col outline-none lg:min-h-0 lg:flex-1 lg:shrink">
+    <section
+      id="ergebnis"
+      tabIndex={-1}
+      aria-labelledby="ergebnis-h"
+      className="flex min-w-0 shrink-0 flex-col outline-none lg:min-h-0 lg:flex-1 lg:shrink"
+    >
       <header className="flex h-11 shrink-0 items-center gap-4 border-b px-6">
         <h2 id="ergebnis-h" className="text-[13px] font-semibold">
           Ergebnis
@@ -72,14 +77,20 @@ export function OutputPanel({ questions, models, states, rule, onInspect, toolba
       </header>
 
       <p role="status" className="sr-only">
-        {running ? "Läuft …" : anyActive ? `Ergebnis für ${models.length} ${models.length === 1 ? "Modell" : "Modelle"} liegt vor.` : ""}
+        {running
+          ? "Läuft …"
+          : anyActive
+            ? `Ergebnis für ${models.length} ${models.length === 1 ? "Modell" : "Modelle"} liegt vor.`
+            : ""}
       </p>
 
       {!anyActive ? (
         <div className="px-6 py-16">
           <div className="max-w-sm">
             <h3 className="text-[15px] font-semibold">Noch kein Ergebnis</h3>
-            <p className="mt-1 text-muted-foreground">Wähle links eine Vorlage oder gib State und Frage ein. Mit ⌘&nbsp;↵ startet der Lauf.</p>
+            <p className="mt-1 text-muted-foreground">
+              Wähle links eine Vorlage oder gib State und Frage ein. Mit ⌘&nbsp;↵ startet der Lauf.
+            </p>
           </div>
         </div>
       ) : (
@@ -135,9 +146,16 @@ function RunTable({ models, states, onInspect }: Pick<Props, "models" | "states"
               <TableCell>
                 {s.status === "running" && <span className="text-muted-foreground">läuft …</span>}
                 {s.status === "idle" && <span className="text-faint">–</span>}
-                {s.status === "done" && (s.run.error ? <span className="text-destructive">Fehler</span> : <span className="text-ok">fertig</span>)}
+                {s.status === "done" &&
+                  (s.run.error ? (
+                    <span className="text-destructive">Fehler</span>
+                  ) : (
+                    <span className="text-ok">fertig</span>
+                  ))}
               </TableCell>
-              <TableCell className="text-right tabular-nums">{s.status === "done" ? `${fmtNum(s.run.latencyMs / 1000, 1)} s` : "–"}</TableCell>
+              <TableCell className="text-right tabular-nums">
+                {s.status === "done" ? `${fmtNum(s.run.latencyMs / 1000, 1)} s` : "–"}
+              </TableCell>
               <TableCell className="text-right tabular-nums">
                 {s.status === "done" ? `${fmtInt(s.run.tokensIn)} / ${fmtInt(s.run.tokensOut)}` : "–"}
               </TableCell>
@@ -145,7 +163,14 @@ function RunTable({ models, states, onInspect }: Pick<Props, "models" | "states"
                 {s.status === "done" && (
                   <Tooltip>
                     <TooltipTrigger
-                      render={<Button variant="ghost" size="icon-sm" onClick={() => onInspect(id)} aria-label={`Raw-Payload von ${m.label} öffnen`} />}
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => onInspect(id)}
+                          aria-label={`Raw-Payload von ${m.label} öffnen`}
+                        />
+                      }
                     >
                       <Code2 aria-hidden />
                     </TooltipTrigger>
@@ -161,7 +186,17 @@ function RunTable({ models, states, onInspect }: Pick<Props, "models" | "states"
   );
 }
 
-function RuleBlock({ rule, questions, models, states }: { rule: NonNullable<Props["rule"]>; questions: Question[]; models: ModelId[]; states: States }) {
+function RuleBlock({
+  rule,
+  questions,
+  models,
+  states,
+}: {
+  rule: NonNullable<Props["rule"]>;
+  questions: Question[];
+  models: ModelId[];
+  states: States;
+}) {
   return (
     <div className="mt-6 border-t pt-5">
       <h3 className="flex items-center gap-2 text-[15px] font-semibold">
@@ -206,14 +241,17 @@ function RuleBlock({ rule, questions, models, states }: { rule: NonNullable<Prop
 }
 
 function ErrorNote({ run }: { run: ModelRun }) {
-  const title = run.error?.kind === "timeout" ? "Timeout" : run.error?.kind === "overflow" ? "Kontext zu groß" : "Fehler";
+  const title =
+    run.error?.kind === "timeout" ? "Timeout" : run.error?.kind === "overflow" ? "Kontext zu groß" : "Fehler";
   return (
     <Alert variant="destructive" className="border-destructive/40 bg-bad-soft">
       <TriangleAlert aria-hidden />
       <AlertTitle className="text-[13px]">{title}: keine Antwort</AlertTitle>
       <AlertDescription>
         <p>{run.error?.message}</p>
-        <p className="opacity-80">Fehler werden nie als Antwort angezeigt. Kürze den State oder starte den Lauf erneut.</p>
+        <p className="opacity-80">
+          Fehler werden nie als Antwort angezeigt. Kürze den State oder starte den Lauf erneut.
+        </p>
       </AlertDescription>
     </Alert>
   );
@@ -233,7 +271,11 @@ type Row = { id: ModelId; name: string; color: string; s: ModelState; a?: Answer
 
 function GridRow({ n, label, children, strong }: { n: number; label: string; children: ReactNode; strong?: boolean }) {
   return (
-    <div role="row" className="grid items-baseline gap-x-3 border-t py-1.5" style={{ gridTemplateColumns: gridTemplate(n) }}>
+    <div
+      role="row"
+      className="grid items-baseline gap-x-3 border-t py-1.5"
+      style={{ gridTemplateColumns: gridTemplate(n) }}
+    >
       <div role="rowheader" className={strong ? "font-medium" : "text-muted-foreground"}>
         {label}
       </div>
@@ -290,7 +332,19 @@ function StatRows({ q, labels, rows }: { q: Question; labels: string[]; rows: Ro
   );
 }
 
-function QuestionBlock({ q, index, total, models, states }: { q: Question; index: number; total: number; models: ModelId[]; states: States }) {
+function QuestionBlock({
+  q,
+  index,
+  total,
+  models,
+  states,
+}: {
+  q: Question;
+  index: number;
+  total: number;
+  models: ModelId[];
+  states: States;
+}) {
   const labels = labelsFor(q);
   const rows: Row[] = models.map((id) => {
     const m = modelById(id);
@@ -304,7 +358,7 @@ function QuestionBlock({ q, index, total, models, states }: { q: Question; index
   return (
     <article className="mt-6 border-t pt-5" aria-labelledby={`h-${q.id}`}>
       <header className="mb-4">
-        <h3 id={`h-${q.id}`} className="text-[15px] font-semibold leading-snug">
+        <h3 id={`h-${q.id}`} className="text-[15px] leading-snug font-semibold">
           {total > 1 && <span className="mr-2 font-normal text-faint">{index + 1}.</span>}
           {q.text || <span className="text-faint">(ohne Text)</span>}
         </h3>
@@ -322,7 +376,10 @@ function QuestionBlock({ q, index, total, models, states }: { q: Question; index
               <div className="grid gap-x-3 pb-2" style={{ gridTemplateColumns: gridTemplate(n) }}>
                 <span />
                 {rows.map((r) => (
-                  <span key={r.id} className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <span
+                    key={r.id}
+                    className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground"
+                  >
                     <Dot color={r.color} />
                     <span className="truncate">{r.name}</span>
                   </span>
@@ -377,7 +434,9 @@ function SingleBody({ q, labels, row, loading }: { q: Question; labels: string[]
         </Stat>
       </dl>
 
-      {q.type === "choice" && <ChoiceMatrix labels={labels} cols={[{ key: row.id, name: row.name, color: row.color, probs: a.probs }]} />}
+      {q.type === "choice" && (
+        <ChoiceMatrix labels={labels} cols={[{ key: row.id, name: row.name, color: row.color, probs: a.probs }]} />
+      )}
       {q.type === "noul" && <NoulScale pTrue={a.probs[0]} color={row.color} />}
       {q.type === "score" && <ScoreChart probs={a.probs} color={row.color} low={q.scoreLow} high={q.scoreHigh} />}
 
@@ -390,7 +449,11 @@ function Stat({ label, children, big }: { label: string; children: ReactNode; bi
   return (
     <div>
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className={`tabular-nums ${big ? "text-xl font-semibold leading-tight tracking-tight" : "text-[15px] font-medium leading-tight"}`}>{children}</dd>
+      <dd
+        className={`tabular-nums ${big ? "text-xl leading-tight font-semibold tracking-tight" : "text-[15px] leading-tight font-medium"}`}
+      >
+        {children}
+      </dd>
     </div>
   );
 }

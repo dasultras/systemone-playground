@@ -23,8 +23,7 @@ function rng(seed: number) {
   };
 }
 
-const gauss = (r: () => number) =>
-  Math.sqrt(-2 * Math.log(r() || 1e-9)) * Math.cos(2 * Math.PI * r());
+const gauss = (r: () => number) => Math.sqrt(-2 * Math.log(r() || 1e-9)) * Math.cos(2 * Math.PI * r());
 
 function softmax(logits: number[]): number[] {
   const m = Math.max(...logits);
@@ -60,11 +59,21 @@ function singlePass(q: Question, state: string, modelId: ModelId, shift: number)
 export function mockProbs(q: Question, state: string, modelId: ModelId, shifts: number): number[] {
   if (q.type !== "choice" || shifts <= 1) return singlePass(q, state, modelId, 0);
   const k = q.options.length;
-  const acc = new Array<number>(k).fill(0);
+  const acc = Array.from({ length: k }, () => 0);
   for (let s = 0; s < shifts; s++) {
     // Bias hängt an der Position, nicht an der Option → beim Zurückdrehen verteilt er sich.
     const rotated = q.options.map((_, i) => q.options[(i + s) % k]);
-    const p = singlePass({ ...q, options: rotated, mockTruth: ((q.mockTruth ?? 0) - s + k) % k, mockSecond: q.mockSecond === undefined ? undefined : (q.mockSecond - s + k) % k }, state, modelId, s);
+    const p = singlePass(
+      {
+        ...q,
+        options: rotated,
+        mockTruth: ((q.mockTruth ?? 0) - s + k) % k,
+        mockSecond: q.mockSecond === undefined ? undefined : (q.mockSecond - s + k) % k,
+      },
+      state,
+      modelId,
+      s,
+    );
     p.forEach((v, i) => (acc[(i + s) % k] += v / shifts));
   }
   return acc;
@@ -91,7 +100,8 @@ export function mockRun(args: {
   const { modelId, state, facts, questions, average, simulate = "none" } = args;
   const model = modelById(modelId);
   const text = fullStateText(state, facts);
-  const tokensIn = estimateTokens(text) + questions.reduce((s, q) => s + estimateTokens(q.text + labelsFor(q).join(" ")) + 24, 0);
+  const tokensIn =
+    estimateTokens(text) + questions.reduce((s, q) => s + estimateTokens(q.text + labelsFor(q).join(" ")) + 24, 0);
   const jitter = rng(hash(modelId + text))();
   const perQuestion = model.hosted ? 60 : 180;
 
@@ -121,11 +131,25 @@ export function mockRun(args: {
   }
 
   const latencyMs = error
-    ? (error.kind === "timeout" ? (model.hosted ? 30_000 : 120_000) : 180)
+    ? error.kind === "timeout"
+      ? model.hosted
+        ? 30_000
+        : 120_000
+      : 180
     : Math.round((model.baseLatencyMs + questions.length * perQuestion * average) * (0.85 + jitter * 0.3));
 
   if (error) {
-    return { modelId, error, answers: [], latencyMs, tokensIn, tokensOut: 0, averaged: average, request, response: { error: { type: error.kind, message: error.message } } };
+    return {
+      modelId,
+      error,
+      answers: [],
+      latencyMs,
+      tokensIn,
+      tokensOut: 0,
+      averaged: average,
+      request,
+      response: { error: { type: error.kind, message: error.message } },
+    };
   }
 
   const answers: Answer[] = questions.map((qq) => {
