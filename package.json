@@ -12,6 +12,7 @@
     "build": "next build",
     "start": "next start",
     "test": "node --test \"lib/**/*.test.ts\"",
+    "eval": "node eval/eval.ts",
     "check": "npm run check:type && npm run check:lint && npm run check:format",
     "check:type": "next typegen && tsc --noEmit",
     "check:lint": "oxlint --deny-warnings .",

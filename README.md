@@ -25,6 +25,13 @@ npm run dev
 Es gibt einen [Dev Container](.devcontainer/devcontainer.json) (Node 24, docker-in-docker, gh), in VS Code
 „Reopen in Container".
 
+## Evaluation
+
+`npm run eval -- --limit 2` ist ein Smoke-Lauf, `npm run eval` der volle Lauf (600 synthetische Items, lokal roh und
+gemittelt) gegen den laufenden Server (`--base-url`, Standard `:3100`). Antworten liegen je Frage-Hash in
+`eval/out/raw/` (Resume; geänderte Fragen werden neu geholt), Bericht in `eval/out/report.md`. `jev-latest` nur mit
+`EVAL_ALLOW_TYPESAFE=1`, die Daten sind synthetisch.
+
 ## Kompatible Backends
 
 Kompatibel mit jedem Server, der das System-One-Schema (`/v1/systemone`) spricht, angebunden über die Base-URL:
