@@ -39,13 +39,19 @@
   --sidebar-border: #e6e8eb;
   --sidebar-ring: #2f5bea;
 
-  --faint: #6f7681;
+  --faint: #656c77;
   --ok: #15803d;
   --ok-soft: #e7f4ec;
   --warn: #9a5b06;
   --warn-soft: #fbf0db;
   --bad: #c42b2b;
   --bad-soft: #fbe8e7;
+
+  /* Modellfarben: Daten, nicht Chrome. Mindestens 3:1 gegen card. */
+  --model-elephant: #e8710a;
+  --model-clef: #8e5bd9;
+  --model-pplx: #0e9f8e;
+  --model-jev: #2459cf;
 }
 
 .dark {
@@ -85,6 +91,11 @@
   --warn-soft: #2a2210;
   --bad: #ff7b72;
   --bad-soft: #2e1716;
+
+  --model-elephant: #f08a2e;
+  --model-clef: #a47ce6;
+  --model-pplx: #19b8a5;
+  --model-jev: #6b95f2;
 }
 
 @theme inline {

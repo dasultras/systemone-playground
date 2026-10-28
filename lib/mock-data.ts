@@ -8,7 +8,7 @@ export const MODELS: ModelInfo[] = [
     hosted: false,
     contextTokens: 8_000,
     size: "9B · q4 · 8k",
-    color: "#e8710a",
+    color: "var(--model-elephant)",
   },
   {
     id: "clef-flash",
@@ -17,7 +17,7 @@ export const MODELS: ModelInfo[] = [
     hosted: false,
     contextTokens: 8_000,
     size: "8k",
-    color: "#8e5bd9",
+    color: "var(--model-clef)",
   },
   {
     id: "pplx-decider",
@@ -26,7 +26,7 @@ export const MODELS: ModelInfo[] = [
     hosted: false,
     contextTokens: 16_000,
     size: "27B · 16k",
-    color: "#0e9f8e",
+    color: "var(--model-pplx)",
   },
   {
     id: "jev-latest",
@@ -35,7 +35,7 @@ export const MODELS: ModelInfo[] = [
     hosted: true,
     contextTokens: 64_000,
     size: "64k",
-    color: "#2459cf",
+    color: "var(--model-jev)",
   },
 ];
 

@@ -153,7 +153,7 @@ export function OptionsEditor({
             size="icon-xs"
             onClick={() => remove(i)}
             aria-label={`Option ${i + 1} entfernen`}
-            className={`absolute right-1.5 text-muted-foreground hover:text-destructive focus-visible:opacity-100 ${hover === i || caret === i ? "opacity-100" : "opacity-0"}`}
+            className={`absolute right-1.5 text-muted-foreground hover:text-destructive focus-visible:opacity-100 pointer-coarse:opacity-100 ${hover === i || caret === i ? "opacity-100" : "opacity-0"}`}
             style={{ top: i * ROW + (ROW - 20) / 2 }}
           >
             <X aria-hidden />

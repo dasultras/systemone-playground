@@ -47,9 +47,13 @@ export const errorRun = (modelId: ModelId, error: RunError, rest: Partial<ModelR
 export async function postRun(body: RunRequest, signal: AbortSignal): Promise<ModelRun> {
   try {
     const res = await fetch("/api/run", { method: "POST", body: JSON.stringify(body), signal });
-    const json = await res.json();
-    return res.ok ? json : errorRun(body.modelId, json.error, { request: body });
-  } catch (e) {
-    return errorRun(body.modelId, { kind: "network", message: e instanceof Error ? e.message : String(e) });
+    // Kein JSON (z. B. HTML-Fehlerseite eines Proxys): als API-Fehler mit Status melden.
+    const json = await res.json().catch(() => null);
+    if (res.ok && json) return json;
+    const error = json?.error ?? { kind: "api", message: `Unlesbare Antwort vom Server (HTTP ${res.status}).` };
+    return errorRun(body.modelId, { ...error, status: res.status }, { request: body });
+  } catch {
+    // Die Browsermeldung („Failed to fetch“) ist englisch und sagt nicht mehr als das hier.
+    return errorRun(body.modelId, { kind: "network", message: "Server nicht erreichbar oder Verbindung abgebrochen." });
   }
 }

@@ -61,6 +61,8 @@ export type Answer = {
 export type RunError = {
   kind: "timeout" | "overflow" | "network" | "api";
   message: string;
+  /** HTTP-Status, falls es einen gibt (z. B. 429 bei Rate-Limit oder Tagesbudget). */
+  status?: number;
 };
 
 export type ModelRun = {

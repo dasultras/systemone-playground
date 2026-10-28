@@ -30,7 +30,7 @@ export function Segmented<T extends string>({
         <ToggleGroupItem
           key={o.value}
           value={o.value}
-          className="px-2.5 text-xs text-muted-foreground aria-pressed:bg-accent aria-pressed:text-foreground"
+          className="px-2.5 text-xs text-muted-foreground aria-pressed:bg-accent aria-pressed:text-foreground pointer-coarse:min-h-10 pointer-coarse:min-w-10"
         >
           {o.label}
         </ToggleGroupItem>

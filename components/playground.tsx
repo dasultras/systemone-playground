@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { NO_HISTORY, download, readHistory, subscribeHistory, toCsv, toJson, writeHistory } from "@/lib/history";
 import { DEFAULT_MODEL, PRESETS, newQuestion, presetById, uid } from "@/lib/mock-data";
-import { postRun } from "@/lib/run";
+import { postRun, type RunRequest } from "@/lib/run";
 import type { Fact, HistoryEntry, Mode, ModelId, ModelState, Question } from "@/lib/types";
 import { AppSidebar } from "./app-sidebar";
 import { InputPanel, validate, type Invalid } from "./input-panel";
@@ -46,8 +46,27 @@ export function Playground() {
   const history = useSyncExternalStore(subscribeHistory, readHistory, () => NO_HISTORY);
   const [activeId, setActiveId] = useState<string | null>(null);
   const abort = useRef<AbortController | null>(null);
+  // Zuletzt gesendeter (oder aus dem Verlauf geladener) Request, für „Erneut versuchen“.
+  const sentRequest = useRef<Omit<RunRequest, "modelId"> | null>(null);
 
-  useEffect(() => () => abort.current?.abort(), []);
+  // Reload oder Schließen bricht laufende Requests ab; abgebrochene Läufe landen nie im Verlauf.
+  // Kommt die Seite aus dem Back-/Forward-Cache zurück, darf nichts auf „läuft …“ hängen bleiben.
+  useEffect(() => {
+    const stop = () => abort.current?.abort();
+    const restore = (e: PageTransitionEvent) => {
+      if (e.persisted)
+        setStates((s) => Object.fromEntries(Object.entries(s).filter(([, v]) => v?.status !== "running")));
+    };
+    window.addEventListener("beforeunload", stop);
+    window.addEventListener("pagehide", stop);
+    window.addEventListener("pageshow", restore);
+    return () => {
+      stop();
+      window.removeEventListener("beforeunload", stop);
+      window.removeEventListener("pagehide", stop);
+      window.removeEventListener("pageshow", restore);
+    };
+  }, []);
 
   const running = models.some((m) => states[m]?.status === "running");
 
@@ -97,9 +116,15 @@ export function Playground() {
     const sent = questions.map((q) => ({ ...q, options: q.options.filter((o) => o.trim()) }));
     setQuestions(sent);
     const snapshot = { state, facts, questions: sent, average };
+    sentRequest.current = snapshot;
     const started = Date.now();
     setStates(Object.fromEntries(models.map((id) => [id, { status: "running", startedAt: started } as ModelState])));
     setActiveId(null);
+    // Unter lg steht das Ergebnis unter der Eingabe, also dorthin scrollen.
+    if (!matchMedia("(min-width: 64rem)").matches) {
+      const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+      document.getElementById("ergebnis")?.scrollIntoView({ block: "start", behavior: smooth ? "smooth" : "auto" });
+    }
 
     const runs = await Promise.all(
       models.map(async (modelId) => {
@@ -127,6 +152,24 @@ export function Playground() {
     setActiveId(id);
   }, [state, facts, questions, average, models, presetId, mode]);
 
+  /** Wiederholt nur ein Modell mit demselben Request und ersetzt dessen Lauf im aktiven Verlaufseintrag. */
+  const retry = async (modelId: ModelId) => {
+    const snapshot = sentRequest.current;
+    if (!snapshot) return;
+    abort.current?.abort();
+    const ctrl = (abort.current = new AbortController());
+    setStates((s) => ({ ...s, [modelId]: { status: "running", startedAt: Date.now() } }));
+    const r = await postRun({ modelId, ...snapshot }, ctrl.signal);
+    if (ctrl.signal.aborted) return;
+    setStates((s) => ({ ...s, [modelId]: { status: "done", run: r } }));
+    if (activeId)
+      writeHistory(
+        readHistory().map((h) =>
+          h.id === activeId ? { ...h, runs: h.runs.map((x) => (x.modelId === modelId ? r : x)) } : h,
+        ),
+      );
+  };
+
   const selectHistory = (h: HistoryEntry) => {
     reset();
     setPresetId(h.presetId);
@@ -138,11 +181,14 @@ export function Playground() {
     setAverage(h.average);
     setStates(Object.fromEntries(h.runs.map((r) => [r.modelId, { status: "done", run: r } as ModelState])));
     setActiveId(h.id);
+    sentRequest.current = { state: h.state, facts: h.facts, questions: h.questions, average: h.average };
   };
 
   const deleteHistory = (id: string) => {
     const entry = history.find((h) => h.id === id);
     if (!entry) return;
+    // Gelöschter Eintrag ist ausgewählt: Ergebnis gehört zu nichts mehr, also leeren.
+    if (id === activeId) reset();
     writeHistory(history.filter((x) => x.id !== id));
     toast(`„${entry.title}“ gelöscht`, {
       duration: 8000,
@@ -238,6 +284,7 @@ export function Playground() {
               setInspectModel(m);
               setInspectorOpen(true);
             }}
+            onRetry={retry}
             toolbar={
               <Toolbar
                 onToggleInspector={() => {

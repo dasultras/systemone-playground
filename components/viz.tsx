@@ -30,7 +30,8 @@ export function Verdict({ light }: { light: Light }) {
   );
 }
 
-export const gridTemplate = (n: number) => `minmax(6.5rem, 10rem) repeat(${n}, minmax(0, 1fr))`;
+/** Bezeichnungsspalte höchstens 28 % breit, damit auf dem Handy Platz für die Modelle bleibt. */
+export const gridTemplate = (n: number) => `minmax(5.5rem, min(10rem, 28%)) repeat(${n}, minmax(0, 1fr))`;
 
 const spring = { type: "spring", stiffness: 160, damping: 24 } as const;
 const tint = (color: string, pct: number) => `color-mix(in srgb, ${color} ${pct}%, transparent)`;
@@ -101,7 +102,8 @@ export function ChoiceMatrix({ labels, cols }: { labels: string[]; cols: Col[] }
                 <span
                   aria-hidden
                   className="absolute inset-y-0 w-px border-l border-dashed border-foreground/25"
-                  style={{ left: `${100 / k}%` }}
+                  // Nur oben und unten sichtbar, damit die Linie keine Ziffern durchstreicht.
+                  style={{ left: `${100 / k}%`, maskImage: "linear-gradient(#000 22%, transparent 22% 78%, #000 78%)" }}
                 />
                 <span
                   className={`relative flex h-full items-center px-2 tabular-nums ${top ? "font-semibold text-foreground" : "text-muted-foreground"}`}

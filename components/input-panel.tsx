@@ -116,7 +116,7 @@ export function InputPanel(p: Props) {
         ))}
       </nav>
 
-      <div className="space-y-5 px-4 py-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain">
+      <div className="relative space-y-5 px-4 py-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain">
         <Group
           title="State"
           titleFor="state"
@@ -271,7 +271,7 @@ export function InputPanel(p: Props) {
             {p.invalid.message}
           </p>
         ) : (
-          <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground pointer-coarse:hidden">
             <KbdGroup>
               <Kbd>⌘</Kbd>
               <Kbd>↵</Kbd>

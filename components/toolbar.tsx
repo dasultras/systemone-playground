@@ -1,6 +1,6 @@
 "use client";
 
-import { Braces, Moon, Sun } from "lucide-react";
+import { Braces, Monitor, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
@@ -13,15 +13,23 @@ type Props = {
 
 const noop = () => () => {};
 
+/** Ein Klick schaltet weiter: System → Hell → Dunkel → System. */
+const THEMES = {
+  system: { label: "System", icon: Monitor, next: "light" },
+  light: { label: "Hell", icon: Sun, next: "dark" },
+  dark: { label: "Dunkel", icon: Moon, next: "system" },
+} as const;
+
 export function Toolbar(p: Props) {
-  const { resolvedTheme, setTheme } = useTheme();
-  // Das Theme steht erst im Browser fest; bis zur Hydration gilt "hell", damit Server und Client übereinstimmen.
+  const { theme, setTheme } = useTheme();
+  // Das Theme steht erst im Browser fest; bis zur Hydration gilt "System", damit Server und Client übereinstimmen.
   const mounted = useSyncExternalStore(
     noop,
     () => true,
     () => false,
   );
-  const dark = mounted && resolvedTheme === "dark";
+  const current = (mounted && THEMES[theme as keyof typeof THEMES]) || THEMES.system;
+  const Icon = current.icon;
 
   return (
     <div className="flex items-center gap-0.5">
@@ -49,16 +57,15 @@ export function Toolbar(p: Props) {
             <Button
               variant="ghost"
               size="icon"
-              aria-label={dark ? "Hellen Modus aktivieren" : "Dunklen Modus aktivieren"}
-              onClick={() => setTheme(dark ? "light" : "dark")}
+              aria-label={`Design: ${current.label}`}
+              onClick={() => setTheme(current.next)}
               className="text-muted-foreground"
             />
           }
         >
-          <Sun aria-hidden className="hidden dark:block" />
-          <Moon aria-hidden className="dark:hidden" />
+          <Icon aria-hidden />
         </TooltipTrigger>
-        <TooltipContent>{dark ? "Heller Modus" : "Dunkler Modus"}</TooltipContent>
+        <TooltipContent>Design: {current.label}</TooltipContent>
       </Tooltip>
     </div>
   );

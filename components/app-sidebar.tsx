@@ -1,6 +1,7 @@
 "use client";
 
 import { Download, SquarePen, X } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +19,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { groupOf, timeLabel } from "@/lib/history";
+import { NO_HISTORY, groupOf, timeLabel } from "@/lib/history";
 import { modelById } from "@/lib/mock-data";
 import type { HistoryEntry, HistoryGroup } from "@/lib/types";
 import { ResizeHandle } from "./resize-handle";
@@ -37,6 +38,17 @@ type Props = {
 };
 
 const GROUPS: HistoryGroup[] = ["Heute", "Gestern", "Diese Woche", "Älter"];
+
+// Einfügen und Löschen kurz ein- und ausblenden; overflow nur während der Animation, sonst wäre der Fokusring abgeschnitten.
+// Gruppen genauso, damit der erste Eintrag einer neuen Gruppe und das Löschen des letzten sichtbar animieren.
+const MotionGroup = motion.create(SidebarGroup);
+const MotionItem = motion.create(SidebarMenuItem);
+const ITEM = {
+  initial: { opacity: 0, height: 0, overflow: "hidden" },
+  animate: { opacity: 1, height: "auto", transitionEnd: { overflow: "visible" } },
+  exit: { opacity: 0, height: 0, overflow: "hidden" },
+  transition: { duration: 0.18, ease: "easeOut" },
+} as const;
 
 export function AppSidebar({
   history,
@@ -97,57 +109,66 @@ export function AppSidebar({
       </SidebarHeader>
 
       <SidebarContent>
-        {GROUPS.map((g) => {
-          const items = filtered.filter((h) => groupOf(h.at) === g);
-          if (!items.length) return null;
-          return (
-            <SidebarGroup key={g} className="py-1">
-              <SidebarGroupLabel>{g}</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {items.map((h) => (
-                    <SidebarMenuItem key={h.id}>
-                      <SidebarMenuButton
-                        size="lg"
-                        isActive={activeId === h.id}
-                        aria-current={activeId === h.id ? "true" : undefined}
-                        onClick={() => {
-                          onSelect(h);
-                          closeOnMobile();
-                        }}
-                        className="h-auto py-1.5"
-                      >
-                        <span className="flex min-w-0 flex-col gap-0.5">
-                          <span className="truncate text-[13px] font-medium">{h.title}</span>
-                          <span className="flex items-center gap-2 text-xs font-normal text-muted-foreground">
-                            <span className="tabular-nums">{timeLabel(h.at)}</span>
-                            <span className="flex gap-1">
-                              {h.models.map((m) => (
-                                <span key={m} className="inline-flex" title={modelById(m).label}>
-                                  <Dot color={modelById(m).color} className="size-1.5!" />
-                                  <span className="sr-only">{modelById(m).label}</span>
+        {/* Neuer key nach der Hydration: Der geladene Verlauf erscheint ohne Animation. */}
+        <AnimatePresence initial={false} key={history === NO_HISTORY ? "server" : "client"}>
+          {GROUPS.map((g) => {
+            const items = filtered.filter((h) => groupOf(h.at) === g);
+            if (!items.length) return null;
+            return (
+              <MotionGroup key={g} className="py-1" {...ITEM}>
+                <SidebarGroupLabel>{g}</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <AnimatePresence initial={false}>
+                      {items.map((h) => (
+                        <MotionItem key={h.id} {...ITEM}>
+                          <SidebarMenuButton
+                            size="lg"
+                            isActive={activeId === h.id}
+                            aria-current={activeId === h.id ? "true" : undefined}
+                            onClick={() => {
+                              onSelect(h);
+                              closeOnMobile();
+                            }}
+                            className="h-auto py-1.5"
+                          >
+                            <span className="flex min-w-0 flex-col gap-0.5">
+                              <span className="truncate text-[13px] font-medium">{h.title}</span>
+                              <span className="flex items-center gap-2 text-xs font-normal text-muted-foreground">
+                                <span className="tabular-nums">{timeLabel(h.at)}</span>
+                                <span className="flex gap-1">
+                                  {h.models.map((m) => (
+                                    <span key={m} className="inline-flex" title={modelById(m).label}>
+                                      <Dot color={modelById(m).color} className="size-1.5!" />
+                                      <span className="sr-only">{modelById(m).label}</span>
+                                    </span>
+                                  ))}
                                 </span>
-                              ))}
+                                {h.mode === "multi" && <span>{h.questions.length} Fragen</span>}
+                              </span>
                             </span>
-                            {h.mode === "multi" && <span>{h.questions.length} Fragen</span>}
-                          </span>
-                        </span>
-                      </SidebarMenuButton>
-                      <SidebarMenuAction
-                        showOnHover
-                        onClick={() => onDelete(h.id)}
-                        aria-label={`Lauf „${h.title}“ (${timeLabel(h.at)}) löschen`}
-                      >
-                        <X aria-hidden />
-                      </SidebarMenuAction>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          );
-        })}
-        {filtered.length === 0 && <p className="px-4 pt-6 text-muted-foreground">Keine Läufe gefunden.</p>}
+                          </SidebarMenuButton>
+                          <SidebarMenuAction
+                            showOnHover
+                            onClick={() => onDelete(h.id)}
+                            aria-label={`Lauf „${h.title}“ (${timeLabel(h.at)}) löschen`}
+                          >
+                            <X aria-hidden />
+                          </SidebarMenuAction>
+                        </MotionItem>
+                      ))}
+                    </AnimatePresence>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </MotionGroup>
+            );
+          })}
+        </AnimatePresence>
+        {filtered.length === 0 && (
+          <p className="px-4 pt-6 text-muted-foreground">
+            {history.length ? "Keine Läufe gefunden." : "Noch keine Läufe. Ergebnisse landen hier automatisch."}
+          </p>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border">

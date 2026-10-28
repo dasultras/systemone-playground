@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronRight, Code2, Scale, TriangleAlert } from "lucide-react";
+import { ChevronRight, Code2, RotateCw, Scale, TriangleAlert } from "lucide-react";
+import { motion } from "motion/react";
 import type { ReactNode } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { fmtInt } from "@/lib/limits";
 import { labelsFor, modelById } from "@/lib/mock-data";
 import { expectedScore, fmtNum, fmtPct, noulVerdict } from "@/lib/metrics";
-import type { Answer, ModelId, ModelRun, ModelState, Preset, Question } from "@/lib/types";
+import type { Answer, ModelId, ModelRun, ModelState, Preset, Question, RunError } from "@/lib/types";
 import { Panel } from "./group";
 import { ChoiceMatrix, Dot, NoulScale, ScoreChart, Verdict, gridTemplate, type Col } from "./viz";
 
@@ -23,6 +24,7 @@ type Props = {
   states: States;
   rule?: Preset["rule"];
   onInspect: (m: ModelId) => void;
+  onRetry: (m: ModelId) => void;
   toolbar: ReactNode;
 };
 
@@ -38,18 +40,38 @@ const TYPE_META = {
 
 const VERDICT_WORD = { yes: "Ja", no: "Nein", unclear: "Unklar" } as const;
 
+/** Ergebnisse und Fehler erscheinen dezent; MotionConfig reduziert das bei „weniger Bewegung“. */
+const APPEAR = {
+  initial: { opacity: 0, y: 4 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.18, ease: "easeOut" },
+} as const;
+
+/** Titel je Fehlerart; Wiederholen nur, wo ein zweiter Versuch etwas ändern kann. */
+function errorView(e: RunError): { title: string; hint?: string; retry: boolean } {
+  if (e.kind === "timeout") return { title: "Zeitüberschreitung", retry: true };
+  if (e.kind === "overflow" || e.status === 413)
+    return { title: "Kontext zu groß", hint: "Kürze den State, dann starte den Lauf neu.", retry: false };
+  if (e.kind === "network") return { title: "Keine Verbindung", retry: true };
+  // Das Tagesbudget gilt bis morgen; nur ein Rate-Limit lohnt einen zweiten Versuch.
+  if (e.status === 429) return { title: "Limit erreicht", retry: !/Tagesbudget/i.test(e.message) };
+  if (e.status === 400) return { title: "Ungültige Anfrage", retry: false };
+  return { title: "API-Fehler", retry: true };
+}
+
 function answerText(q: Question, labels: string[], a: Answer): string {
   if (q.type === "choice") return labels[a.metrics.topIndex];
   if (q.type === "noul") return VERDICT_WORD[noulVerdict(a.probs[0])];
   return `Level ${a.metrics.topIndex + 1}`;
 }
 
-export function OutputPanel({ questions, models, states, rule, onInspect, toolbar }: Props) {
+export function OutputPanel({ questions, models, states, rule, onInspect, onRetry, toolbar }: Props) {
   const list = models.map((id) => stateOf(states, id));
   const anyActive = list.some((s) => s.status !== "idle");
   const running = list.some((s) => s.status === "running");
-  const only = models.length === 1 ? list[0] : null;
-  const singleError = only?.status === "done" && only.run.error ? only.run : null;
+  const failed = list.flatMap((s) => (s.status === "done" && s.run.error ? [s.run] : []));
+  // Alle Modelle fehlgeschlagen: nur die Hinweise, keine Blöcke voller „Fehler“.
+  const allFailed = !running && failed.length === models.length;
 
   return (
     <section
@@ -58,7 +80,7 @@ export function OutputPanel({ questions, models, states, rule, onInspect, toolba
       aria-labelledby="ergebnis-h"
       className="flex min-w-0 shrink-0 flex-col bg-background outline-none lg:min-h-0 lg:flex-1 lg:shrink"
     >
-      <header className="flex h-11 shrink-0 items-center gap-4 border-b px-6">
+      <header className="flex h-11 shrink-0 items-center gap-4 border-b px-4 sm:px-6">
         <h2 id="ergebnis-h" className="text-[13px] font-semibold">
           Ergebnis
         </h2>
@@ -80,27 +102,31 @@ export function OutputPanel({ questions, models, states, rule, onInspect, toolba
         {running
           ? "Läuft …"
           : anyActive
-            ? `Ergebnis für ${models.length} ${models.length === 1 ? "Modell" : "Modelle"} liegt vor.`
+            ? allFailed
+              ? "Kein Ergebnis, Lauf fehlgeschlagen."
+              : `Ergebnis für ${models.length} ${models.length === 1 ? "Modell" : "Modelle"} liegt vor.`
             : ""}
       </p>
 
       {!anyActive ? (
-        <div className="px-6 py-16">
+        <div className="px-4 py-16 sm:px-6">
           <div className="max-w-sm">
             <h3 className="text-[15px] font-semibold">Noch kein Ergebnis</h3>
             <p className="mt-1 text-muted-foreground">
-              Wähle links eine Vorlage oder gib State und Frage ein. Mit ⌘&nbsp;↵ startet der Lauf.
+              Wähle eine Vorlage oder gib State und Frage ein. „Ausführen“
+              <span className="pointer-coarse:hidden"> oder ⌘&nbsp;↵</span> startet den Lauf.
             </p>
           </div>
         </div>
       ) : (
         <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
-          <div className="mx-auto max-w-[860px] space-y-4 px-6 pt-5 pb-10">
-            {singleError ? (
-              <ErrorNote run={singleError} />
-            ) : (
+          <div className="mx-auto max-w-[860px] space-y-4 px-4 pt-5 pb-10 sm:px-6">
+            {failed.map((r) => (
+              <ErrorNotice key={r.modelId} run={r} onRetry={onRetry} disabled={running} />
+            ))}
+            {models.length > 1 && <RunTable models={models} states={states} onInspect={onInspect} />}
+            {!allFailed && (
               <>
-                {models.length > 1 && <RunTable models={models} states={states} onInspect={onInspect} />}
                 {rule && <RuleBlock rule={rule} questions={questions} models={models} states={states} />}
                 {questions.map((q, i) => (
                   <QuestionBlock key={q.id} index={i} total={questions.length} q={q} models={models} states={states} />
@@ -124,7 +150,10 @@ function RunTable({ models, states, onInspect }: Pick<Props, "models" | "states"
             <TableHead>Modell</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Latenz</TableHead>
-            <TableHead className="text-right">Tokens (ein / aus)</TableHead>
+            {/* Darf umbrechen, damit die Tabelle auf 375 px ohne Seitwärtsscrollen passt. */}
+            <TableHead className="text-right whitespace-normal">
+              Tokens <span className="whitespace-nowrap">(ein / aus)</span>
+            </TableHead>
             <TableHead className="w-8">
               <span className="sr-only">Raw</span>
             </TableHead>
@@ -258,20 +287,36 @@ function RuleBlock({
   );
 }
 
-function ErrorNote({ run }: { run: ModelRun }) {
-  const title =
-    run.error?.kind === "timeout" ? "Timeout" : run.error?.kind === "overflow" ? "Kontext zu groß" : "Fehler";
+/** Fehler eines Modells: kompakt, mit Modell, Meldung und ggf. „Erneut versuchen“. Nie eine Antwort. */
+function ErrorNotice({ run, onRetry, disabled }: { run: ModelRun; onRetry: (m: ModelId) => void; disabled: boolean }) {
+  if (!run.error) return null;
+  const m = modelById(run.modelId);
+  const view = errorView(run.error);
   return (
-    <Alert variant="destructive" className="border-destructive/40 bg-bad-soft">
-      <TriangleAlert aria-hidden />
-      <AlertTitle className="text-[13px]">{title}: keine Antwort</AlertTitle>
-      <AlertDescription>
-        <p>{run.error?.message}</p>
-        <p className="opacity-80">
-          Fehler werden nie als Antwort angezeigt. Kürze den State oder starte den Lauf erneut.
-        </p>
-      </AlertDescription>
-    </Alert>
+    <motion.div {...APPEAR}>
+      <Alert variant="destructive" className="border-destructive/40 bg-bad-soft px-3 py-2">
+        <TriangleAlert aria-hidden />
+        <AlertTitle className="flex min-w-0 flex-wrap items-center gap-x-2 text-[13px]">
+          {view.title}
+          <span className="inline-flex min-w-0 items-center gap-1.5 text-xs font-normal text-muted-foreground">
+            <Dot color={m.color} />
+            <span className="truncate">{m.label}</span>
+          </span>
+        </AlertTitle>
+        <AlertDescription className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1.5">
+          <div className="min-w-0 [overflow-wrap:anywhere] text-foreground">
+            {run.error.message}
+            {view.hint && <span className="block text-muted-foreground">{view.hint}</span>}
+          </div>
+          {view.retry && (
+            <Button variant="outline" size="sm" disabled={disabled} onClick={() => onRetry(run.modelId)}>
+              <RotateCw aria-hidden />
+              Erneut versuchen
+            </Button>
+          )}
+        </AlertDescription>
+      </Alert>
+    </motion.div>
   );
 }
 
@@ -294,7 +339,7 @@ function GridRow({ n, label, children, strong }: { n: number; label: string; chi
       className="grid items-baseline gap-x-3 border-t py-1.5"
       style={{ gridTemplateColumns: gridTemplate(n) }}
     >
-      <div role="rowheader" className={strong ? "font-medium" : "text-muted-foreground"}>
+      <div role="rowheader" className={`min-w-0 truncate ${strong ? "font-medium" : "text-muted-foreground"}`}>
         {label}
       </div>
       {children}
@@ -306,7 +351,12 @@ function Cell({ row, children }: { row: Row; children: (a: Answer) => ReactNode 
   let content: ReactNode = <span className="text-faint">–</span>;
   if (row.s.status === "running") content = <span className="text-muted-foreground">läuft …</span>;
   else if (row.s.status === "done" && row.s.run.error) content = <span className="text-destructive">Fehler</span>;
-  else if (row.a) content = <span className="tabular-nums">{children(row.a)}</span>;
+  else if (row.a)
+    content = (
+      <motion.span {...APPEAR} className="block truncate tabular-nums">
+        {children(row.a)}
+      </motion.span>
+    );
   return (
     <div role="cell" className="min-w-0 truncate">
       {content}
@@ -416,11 +466,13 @@ function QuestionBlock({
                       ) : r.s.status === "done" && r.s.run.error ? (
                         <span className="text-destructive">Fehler</span>
                       ) : r.a ? (
-                        q.type === "noul" ? (
-                          <NoulScale pTrue={r.a.probs[0]} color={r.color} />
-                        ) : (
-                          <ScoreChart probs={r.a.probs} color={r.color} low={q.scoreLow} high={q.scoreHigh} />
-                        )
+                        <motion.div {...APPEAR}>
+                          {q.type === "noul" ? (
+                            <NoulScale pTrue={r.a.probs[0]} color={r.color} />
+                          ) : (
+                            <ScoreChart probs={r.a.probs} color={r.color} low={q.scoreLow} high={q.scoreHigh} />
+                          )}
+                        </motion.div>
                       ) : null}
                     </div>
                   ))}
@@ -437,11 +489,10 @@ function QuestionBlock({
 
 function SingleBody({ q, labels, row, loading }: { q: Question; labels: string[]; row: Row; loading: boolean }) {
   if (loading) return <Loading />;
-  if (row.s.status === "done" && row.s.run.error) return <ErrorNote run={row.s.run} />;
   const a = row.a;
   if (!a) return null;
   return (
-    <div className="space-y-5">
+    <motion.div {...APPEAR} className="space-y-5">
       <dl className="flex flex-wrap gap-x-10 gap-y-3">
         <Stat label="Antwort" big>
           {answerText(q, labels, a)}
@@ -461,7 +512,7 @@ function SingleBody({ q, labels, row, loading }: { q: Question; labels: string[]
       )}
       {q.type === "noul" && <NoulScale pTrue={a.probs[0]} color={row.color} />}
       {q.type === "score" && <ScoreChart probs={a.probs} color={row.color} low={q.scoreLow} high={q.scoreHigh} />}
-    </div>
+    </motion.div>
   );
 }
 

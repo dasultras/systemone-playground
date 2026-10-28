@@ -66,12 +66,14 @@ function probsOf(q: Question, answers: SystemOneResult<Questions>["answers"], av
   return labelsFor(q).map((l) => runs.reduce((sum, r) => sum + r.probabilities[l], 0) / n);
 }
 
-function toError(e: unknown): RunError {
+function toError(e: unknown, backend: ModelInfo["backend"]): RunError {
   if (e instanceof APITimeoutError) return { kind: "timeout", message: `Timeout nach ${e.timeoutMs / 1000} s.` };
   if (e instanceof APIError) {
     const overflow = e.status === 413 || (e.status === 400 && /context|exceed/i.test(e.message));
-    return { kind: overflow ? "overflow" : "api", message: e.message };
+    return { kind: overflow ? "overflow" : "api", message: e.message, status: e.status };
   }
+  if (e instanceof APIConnectionError && backend === "ollama")
+    return { kind: "network", message: "Ollama nicht erreichbar (OLLAMA_BASE_URL). Läuft „ollama serve“?" };
   const message = e instanceof Error ? e.message : String(e);
   return { kind: e instanceof APIConnectionError ? "network" : "api", message };
 }
@@ -85,10 +87,11 @@ export async function runModel(
     state: facts.length ? { text: state, facts: Object.fromEntries(facts.map((f) => [f.key, f.value])) } : state,
     questions: toQuestions(questions, average),
   };
+  const { backend } = modelById(modelId);
   const started = performance.now();
   const latency = () => Math.round(performance.now() - started);
   try {
-    const response = await client(modelById(modelId).backend).systemOne(request, { signal });
+    const response = await client(backend).systemOne(request, { signal });
     const answers = questions.map((q) => {
       const probs = probsOf(q, response.answers, average);
       return { questionId: q.id, probs, metrics: computeMetrics(probs) };
@@ -106,6 +109,6 @@ export async function runModel(
     };
   } catch (e) {
     const response = e instanceof APIError ? e.body : null;
-    return errorRun(modelId, toError(e), { latencyMs: latency(), averaged: average, request, response });
+    return errorRun(modelId, toError(e, backend), { latencyMs: latency(), averaged: average, request, response });
   }
 }
