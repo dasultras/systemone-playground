@@ -1,151 +1,171 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant dark (&:is(.dark *));
 
+/* shadcn-Tokens mit den Werten des Playgrounds. Farbe heißt Daten: Chrome bleibt monochrom. */
 :root {
-  --canvas: #ffffff;
-  --rail: #f6f7f8;
-  --sunken: #f1f2f4;
-  --sunken-2: #e7e9ec;
-  --line: #e6e8eb;
-  --line-strong: #d1d5db;
-  --ink: #0f1115;
-  --muted: #565d69;
+  --radius: 0.5rem;
+  --background: #ffffff;
+  --foreground: #0f1115;
+  --card: #ffffff;
+  --card-foreground: #0f1115;
+  --popover: #ffffff;
+  --popover-foreground: #0f1115;
+  --primary: #0f1115;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f2f4;
+  --secondary-foreground: #0f1115;
+  --muted: #f1f2f4;
+  --muted-foreground: #565d69;
+  --accent: #e7e9ec;
+  --accent-foreground: #0f1115;
+  --destructive: #c42b2b;
+  --border: #e6e8eb;
+  --input: #d1d5db;
+  --ring: #2f5bea;
+  --sidebar: #f6f7f8;
+  --sidebar-foreground: #0f1115;
+  --sidebar-primary: #0f1115;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e7e9ec;
+  --sidebar-accent-foreground: #0f1115;
+  --sidebar-border: #e6e8eb;
+  --sidebar-ring: #2f5bea;
+
   --faint: #6f7681;
-  --accent: #2f5bea;
   --ok: #15803d;
   --ok-soft: #e7f4ec;
   --warn: #9a5b06;
   --warn-soft: #fbf0db;
   --bad: #c42b2b;
   --bad-soft: #fbe8e7;
-  color-scheme: light;
 }
 
 .dark {
-  --canvas: #0c0d10;
-  --rail: #101115;
-  --sunken: #16171b;
-  --sunken-2: #1f2025;
-  --line: #24262c;
-  --line-strong: #353840;
-  --ink: #eceef1;
-  --muted: #a0a6b0;
+  --background: #0c0d10;
+  --foreground: #eceef1;
+  --card: #111216;
+  --card-foreground: #eceef1;
+  --popover: #15161a;
+  --popover-foreground: #eceef1;
+  --primary: #eceef1;
+  --primary-foreground: #0c0d10;
+  --secondary: #1a1b20;
+  --secondary-foreground: #eceef1;
+  --muted: #17181c;
+  --muted-foreground: #a0a6b0;
+  --accent: #1f2025;
+  --accent-foreground: #eceef1;
+  --destructive: #ff7b72;
+  --border: #24262c;
+  --input: #353840;
+  --ring: #86a3ff;
+  --sidebar: #101115;
+  --sidebar-foreground: #eceef1;
+  --sidebar-primary: #eceef1;
+  --sidebar-primary-foreground: #0c0d10;
+  --sidebar-accent: #1f2025;
+  --sidebar-accent-foreground: #eceef1;
+  --sidebar-border: #24262c;
+  --sidebar-ring: #86a3ff;
+
   --faint: #7f8691;
-  --accent: #86a3ff;
   --ok: #4ade80;
   --ok-soft: #10261a;
   --warn: #f0b44c;
   --warn-soft: #2a2210;
   --bad: #ff7b72;
   --bad-soft: #2e1716;
-  color-scheme: dark;
 }
 
 @theme inline {
-  --color-canvas: var(--canvas);
-  --color-rail: var(--rail);
-  --color-sunken: var(--sunken);
-  --color-sunken-2: var(--sunken-2);
-  --color-line: var(--line);
-  --color-line-strong: var(--line-strong);
-  --color-ink: var(--ink);
+  --font-sans: var(--font-instrument), -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", Menlo, monospace;
+  --font-heading: var(--font-sans);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
-  --color-faint: var(--faint);
+  --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-faint: var(--faint);
   --color-ok: var(--ok);
   --color-ok-soft: var(--ok-soft);
   --color-warn: var(--warn);
   --color-warn-soft: var(--warn-soft);
   --color-bad: var(--bad);
   --color-bad-soft: var(--bad-soft);
-  --font-sans: var(--font-instrument), -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", Menlo, monospace;
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
 }
 
-html,
-body {
-  height: 100%;
-}
-
-html {
-  -webkit-tap-highlight-color: transparent;
-}
-
-body {
-  background: var(--canvas);
-  color: var(--ink);
-  font-family: var(--font-sans);
-  font-size: 13px;
-  line-height: 1.45;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
-
-h1,
-h2,
-h3 {
-  text-wrap: balance;
-}
-
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
-}
-
-::selection {
-  background: color-mix(in srgb, var(--accent) 30%, transparent);
-}
-
-button,
-a,
-select,
-summary,
-label {
-  touch-action: manipulation;
-}
-
-button {
-  cursor: pointer;
-}
-
-textarea,
-input,
-select {
-  font: inherit;
-}
-
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-@utility field {
-  @apply h-8 w-full rounded-md border border-line-strong bg-canvas px-2.5 text-[13px] text-ink placeholder:text-faint hover:border-faint;
-}
-
-@utility btn {
-  @apply inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-3 text-[13px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45;
-}
-
-@utility btn-primary {
-  @apply btn bg-ink text-canvas hover:opacity-85;
-}
-
-@utility btn-outline {
-  @apply btn border border-line-strong text-ink hover:bg-sunken;
-}
-
-@utility btn-ghost {
-  @apply btn text-muted hover:bg-sunken hover:text-ink;
-}
-
-@utility icon-btn {
-  @apply inline-grid size-8 place-items-center rounded-md text-muted transition-colors hover:bg-sunken hover:text-ink;
-}
-
-@utility section-title {
-  @apply text-[13px] font-semibold text-ink;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    -webkit-tap-highlight-color: transparent;
+  }
+  html,
+  body {
+    height: 100%;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-size: 13px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  button,
+  a,
+  summary,
+  label {
+    touch-action: manipulation;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--ring) 30%, transparent);
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--input) transparent;
+  }
 }
 
 @keyframes shimmer {
@@ -158,7 +178,7 @@ select {
 }
 
 .shimmer {
-  background-image: linear-gradient(90deg, var(--sunken) 30%, var(--sunken-2) 50%, var(--sunken) 70%);
+  background-image: linear-gradient(90deg, var(--muted) 30%, var(--accent) 50%, var(--muted) 70%);
   background-size: 200% 100%;
   animation: shimmer 1.6s linear infinite;
 }

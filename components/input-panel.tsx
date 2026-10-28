@@ -1,12 +1,22 @@
 "use client";
 
-import { Loader2, PanelLeft, Play, Plus, Trash2, X } from "lucide-react";
+import { Loader2, Play, Plus, Trash2, TriangleAlert, X } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Textarea } from "@/components/ui/textarea";
 import { estimateTokens, fmtInt } from "@/lib/limits";
 import { MODELS, PRESETS, newQuestion } from "@/lib/mock-data";
 import { fullStateText } from "@/lib/mock-run";
 import type { Fact, Mode, ModelId, Question, QuestionType } from "@/lib/types";
+import { Segmented } from "./segmented";
 import { Dot } from "./viz";
-import { Segmented } from "./ui";
 
 export const MAX_OPTIONS = 10;
 export const MAX_QUESTIONS = 5;
@@ -26,7 +36,6 @@ export function validate(state: string, questions: Question[]): Invalid | null {
 
 type Props = {
   title: string;
-  onToggleSidebar: () => void;
   mode: Mode;
   onMode: (m: Mode) => void;
   presetId: string | null;
@@ -45,6 +54,18 @@ type Props = {
   onRun: () => void;
 };
 
+function Section({ title, aside, children, className = "" }: { title: string; aside?: React.ReactNode; children: React.ReactNode; className?: string }) {
+  return (
+    <section className={`px-5 py-4 ${className}`}>
+      <div className="mb-2 flex items-baseline justify-between gap-3">
+        <h2 className="text-[13px] font-semibold">{title}</h2>
+        {aside}
+      </div>
+      {children}
+    </section>
+  );
+}
+
 export function InputPanel(p: Props) {
   const fullText = fullStateText(p.state, p.facts);
   const tokens =
@@ -59,18 +80,15 @@ export function InputPanel(p: Props) {
       ),
     );
 
-  const toggleModel = (id: ModelId) => {
-    if (p.models.includes(id)) {
-      if (p.models.length > 1) p.onModels(p.models.filter((m) => m !== id));
-    } else if (p.models.length < MAX_MODELS) p.onModels([...p.models, id]);
+  const setModel = (id: ModelId, on: boolean) => {
+    if (!on && p.models.length > 1) p.onModels(p.models.filter((m) => m !== id));
+    if (on && p.models.length < MAX_MODELS && !p.models.includes(id)) p.onModels([...p.models, id]);
   };
 
   return (
-    <section aria-label="Eingabe" className="flex w-full shrink-0 flex-col border-line lg:min-h-0 lg:w-[420px] lg:border-r">
-      <header className="flex h-11 shrink-0 items-center gap-2 border-b border-line px-3">
-        <button onClick={p.onToggleSidebar} className="icon-btn" aria-label="Verlauf ein- oder ausblenden">
-          <PanelLeft aria-hidden className="size-4" />
-        </button>
+    <section aria-label="Eingabe" className="flex w-full shrink-0 flex-col lg:min-h-0 lg:w-[420px] lg:border-r">
+      <header className="flex h-11 shrink-0 items-center gap-2 border-b px-3">
+        <SidebarTrigger aria-label="Verlauf ein- oder ausblenden" className="text-muted-foreground" />
         <h1 className="min-w-0 flex-1 truncate text-[13px] font-semibold">{p.title}</h1>
         <Segmented
           label="Modus"
@@ -84,37 +102,37 @@ export function InputPanel(p: Props) {
       </header>
 
       <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain">
-        {/* Vorlagen */}
-        <div className="px-5 pb-3 pt-4">
-          <h2 className="section-title mb-2">Vorlage</h2>
-          <div className="-mx-1.5 flex flex-wrap gap-x-0.5 gap-y-0.5">
+        <Section title="Vorlage" className="pb-3">
+          <div className="-mx-2 flex flex-wrap gap-0.5">
             {PRESETS.filter((x) => x.mode === p.mode).map((x) => (
-              <button
+              <Button
                 key={x.id}
-                onClick={() => p.onPreset(x.id)}
+                variant="ghost"
                 aria-pressed={p.presetId === x.id}
-                className={`rounded-md px-1.5 py-1 text-[13px] transition-colors ${
-                  p.presetId === x.id ? "bg-sunken-2 font-medium text-ink" : "text-muted hover:bg-sunken hover:text-ink"
-                }`}
+                onClick={() => p.onPreset(x.id)}
+                className="text-[13px] font-normal text-muted-foreground aria-pressed:bg-accent aria-pressed:font-medium aria-pressed:text-foreground"
               >
                 {x.title}
-              </button>
+              </Button>
             ))}
           </div>
-        </div>
+        </Section>
 
-        {/* State */}
-        <div className="border-t border-line px-5 py-4">
+        <Separator />
+
+        <section className="px-5 py-4">
           <div className="mb-1 flex items-baseline justify-between gap-3">
-            <label htmlFor="state" className="section-title">State</label>
-            <span className="text-xs tabular-nums text-muted" title="Schätzung: Zeichen geteilt durch 2,6">
+            <Label htmlFor="state" className="text-[13px] font-semibold">
+              State
+            </Label>
+            <span className="text-xs tabular-nums text-muted-foreground" title="Schätzung: Zeichen geteilt durch 2,6">
               ≈&nbsp;{fmtInt(tokens)} Tokens
             </span>
           </div>
-          <p className="mb-2 text-xs text-muted">
+          <p id="state-hint" className="mb-2 text-xs text-muted-foreground">
             Der Kontext, den das Modell liest.{p.mode === "multi" ? " Er gilt für alle Fragen." : " Nur relevante Felder, kürzen statt vergrößern."}
           </p>
-          <textarea
+          <Textarea
             id="state"
             name="state"
             value={p.state}
@@ -122,25 +140,27 @@ export function InputPanel(p: Props) {
             rows={7}
             spellCheck={false}
             autoComplete="off"
+            aria-describedby="state-hint"
+            aria-invalid={p.invalid?.id === "state" || undefined}
             placeholder="z. B. Hostname, OS, installierte Programme …"
-            className="field h-auto resize-y py-2 font-mono text-xs leading-relaxed"
+            className="min-h-32 resize-y font-mono text-xs leading-relaxed md:text-xs"
           />
           {p.facts.length > 0 && (
-            <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-0.5 text-xs">
-              <dt className="sr-only">Vom Code berechnete Fakten</dt>
+            <div className="mt-2 flex flex-wrap items-center gap-1">
+              <span className="sr-only">Vom Code berechnete Fakten:</span>
               {p.facts.map((f) => (
-                <dd key={f.key} className="text-muted">
-                  <span className="font-mono text-[11px]">{f.key}</span> <span className="font-medium tabular-nums text-ink">{f.value}</span>
-                </dd>
+                <Badge key={f.key} variant="outline" className="h-auto rounded-sm py-0.5 font-mono text-[11px] font-normal text-muted-foreground">
+                  {f.key} <span className="font-sans font-semibold tabular-nums text-foreground">{f.value}</span>
+                </Badge>
               ))}
-              <span className="text-faint">vom Code berechnet</span>
-            </dl>
+              <span className="ml-1 text-xs text-faint">vom Code berechnet</span>
+            </div>
           )}
-        </div>
+        </section>
 
-        {/* Fragen */}
-        <div className="border-t border-line px-5 py-4">
-          <h2 className="section-title mb-3">{p.mode === "multi" ? "Fragen" : "Frage"}</h2>
+        <Separator />
+
+        <Section title={p.mode === "multi" ? "Fragen" : "Frage"}>
           <div className="space-y-5">
             {p.questions.map((q, i) => (
               <QuestionEditor
@@ -148,6 +168,7 @@ export function InputPanel(p: Props) {
                 q={q}
                 index={i}
                 multi={p.mode === "multi"}
+                invalid={p.invalid?.id === `q-${q.id}`}
                 onChange={(patch) => update(q.id, patch)}
                 onRemove={p.questions.length > 1 ? () => p.onQuestions(p.questions.filter((x) => x.id !== q.id)) : undefined}
               />
@@ -155,86 +176,90 @@ export function InputPanel(p: Props) {
           </div>
           {p.mode === "multi" && (
             <div className="mt-3 flex items-center justify-between">
-              <button
-                onClick={() => p.onQuestions([...p.questions, newQuestion("noul")])}
-                disabled={p.questions.length >= MAX_QUESTIONS}
-                className="btn-outline"
-              >
-                <Plus aria-hidden className="size-3.5" /> Frage hinzufügen
-              </button>
-              <span className="text-xs tabular-nums text-muted">{p.questions.length} von {MAX_QUESTIONS}</span>
+              <Button variant="outline" onClick={() => p.onQuestions([...p.questions, newQuestion("noul")])} disabled={p.questions.length >= MAX_QUESTIONS}>
+                <Plus aria-hidden /> Frage hinzufügen
+              </Button>
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {p.questions.length} von {MAX_QUESTIONS}
+              </span>
             </div>
           )}
-        </div>
+        </Section>
 
-        {/* Modelle */}
-        <fieldset className="border-t border-line px-5 py-4">
-          <legend className="sr-only">Modelle</legend>
-          <div className="mb-2 flex items-baseline justify-between">
-            <h2 className="section-title" aria-hidden>Modelle</h2>
-            <span className="text-xs text-muted">bis zu {MAX_MODELS} zum Vergleich</span>
-          </div>
-          <ul className="-mx-2">
+        <Separator />
+
+        <Section title="Modelle" aside={<span className="text-xs text-muted-foreground">bis zu {MAX_MODELS} zum Vergleich</span>}>
+          <ul className="-mx-2" aria-label="Modelle">
             {MODELS.map((m) => {
               const on = p.models.includes(m.id);
               const locked = (!on && p.models.length >= MAX_MODELS) || (on && p.models.length === 1);
               const over = tokens > m.contextTokens;
+              const id = `model-${m.id}`;
               return (
                 <li key={m.id}>
-                  <label className={`flex min-h-9 items-center gap-2.5 rounded-md px-2 py-1 ${locked ? "opacity-60" : "cursor-pointer hover:bg-sunken"}`}>
-                    <input
-                      type="checkbox"
-                      checked={on}
-                      disabled={locked}
-                      onChange={() => toggleModel(m.id)}
-                      className="size-3.5 accent-[var(--ink)]"
-                    />
+                  <Label
+                    htmlFor={id}
+                    className={`flex min-h-10 items-center gap-2.5 rounded-md px-2 py-1 font-normal ${locked ? "opacity-60" : "cursor-pointer hover:bg-muted"}`}
+                  >
+                    <Checkbox id={id} checked={on} disabled={locked} onCheckedChange={(v) => setModel(m.id, v === true)} />
                     <Dot color={m.color} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">{m.label}</span>
-                      <span className="block truncate text-xs text-muted">{m.backend === "typesafe" ? "TypeSafe, gehostet" : "Ollama, lokal"} · {m.size}</span>
+                    <span className="min-w-0 flex-1 leading-tight">
+                      <span className="block truncate text-[13px] font-medium">{m.label}</span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {m.backend === "typesafe" ? "TypeSafe, gehostet" : "Ollama, lokal"} · {m.size}
+                      </span>
                     </span>
-                    <span className={`text-xs tabular-nums ${over ? "font-medium text-bad" : "text-muted"}`}>
+                    <span className={`text-xs tabular-nums ${over ? "font-medium text-destructive" : "text-muted-foreground"}`}>
                       {fmtInt(tokens)} / {fmtInt(m.contextTokens)}
                       {over && <span className="sr-only"> überschreitet das Limit</span>}
                     </span>
-                  </label>
+                  </Label>
                 </li>
               );
             })}
           </ul>
           {hosted && (
-            <p className="mt-2 border-l-2 border-warn bg-warn-soft px-2.5 py-1.5 text-xs text-warn">
-              TypeSafe hostet in den USA. Nur synthetische Daten senden, keine echten Inventurdaten.
-            </p>
+            <Alert className="mt-2 border-warn/40 bg-warn-soft text-warn">
+              <TriangleAlert aria-hidden />
+              <AlertDescription className="text-warn">TypeSafe hostet in den USA. Nur synthetische Daten senden, keine echten Inventurdaten.</AlertDescription>
+            </Alert>
           )}
-        </fieldset>
+        </Section>
 
-        {/* Optionen */}
-        <div className={`border-t border-line px-5 py-4 ${hasChoice ? "" : "opacity-55"}`}>
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="section-title">Reihenfolge mitteln</h2>
-              <p className="text-xs text-muted">Verschiebt Optionen zyklisch, gegen Positions-Bias. Nur Choice.</p>
-            </div>
-            <Segmented
-              label="Reihenfolge mitteln"
-              value={String(p.average)}
-              onChange={(v) => p.onAverage(Number(v))}
-              options={["1", "2", "3", "4"].map((v) => ({ value: v, label: v === "1" ? "Aus" : `${v}×` }))}
-            />
+        <Separator />
+
+        <section className={`flex items-center justify-between gap-3 px-5 py-4 ${hasChoice ? "" : "opacity-55"}`}>
+          <div>
+            <h2 className="text-[13px] font-semibold">Reihenfolge mitteln</h2>
+            <p className="text-xs text-muted-foreground">Verschiebt Optionen zyklisch, gegen Positions-Bias. Nur Choice.</p>
           </div>
-        </div>
+          <Segmented
+            label="Reihenfolge mitteln"
+            value={String(p.average)}
+            onChange={(v) => p.onAverage(Number(v))}
+            options={["1", "2", "3", "4"].map((v) => ({ value: v, label: v === "1" ? "Aus" : `${v}×` }))}
+          />
+        </section>
       </div>
 
-      <footer className="sticky bottom-0 border-t border-line bg-canvas px-5 py-3">
-        <button onClick={p.onRun} disabled={p.running} className="btn-primary h-9 w-full">
-          {p.running ? <Loader2 aria-hidden className="size-4 animate-spin" /> : <Play aria-hidden className="size-3.5 fill-current" />}
+      <footer className="sticky bottom-0 border-t bg-background px-5 py-3">
+        <Button size="lg" onClick={p.onRun} disabled={p.running} className="h-9 w-full text-[13px]">
+          {p.running ? <Loader2 aria-hidden className="animate-spin" /> : <Play aria-hidden className="fill-current" />}
           {p.running ? "Läuft …" : p.models.length > 1 ? `Auf ${p.models.length} Modellen ausführen` : "Ausführen"}
-        </button>
-        <p className={`mt-1.5 text-xs ${p.invalid ? "text-bad" : "text-muted"}`} role={p.invalid ? "alert" : undefined}>
-          {p.invalid ? p.invalid.message : "⌘ ↵ führt aus. Mock: keine echten Modellaufrufe."}
-        </p>
+        </Button>
+        {p.invalid ? (
+          <p role="alert" className="mt-1.5 text-xs text-destructive">
+            {p.invalid.message}
+          </p>
+        ) : (
+          <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <KbdGroup>
+              <Kbd>⌘</Kbd>
+              <Kbd>↵</Kbd>
+            </KbdGroup>
+            führt aus. Mock: keine echten Modellaufrufe.
+          </p>
+        )}
       </footer>
     </section>
   );
@@ -244,12 +269,14 @@ function QuestionEditor({
   q,
   index,
   multi,
+  invalid,
   onChange,
   onRemove,
 }: {
   q: Question;
   index: number;
   multi: boolean;
+  invalid: boolean;
   onChange: (patch: Partial<Question>) => void;
   onRemove?: () => void;
 }) {
@@ -259,30 +286,31 @@ function QuestionEditor({
   const id = `q-${q.id}`;
 
   return (
-    <div className={multi ? "border-l-2 border-line pl-3" : ""}>
-      <div className="mb-1 flex items-center justify-between gap-2">
-        <label htmlFor={id} className="text-xs font-medium text-muted">
+    <div className={multi ? "border-l-2 pl-3" : ""}>
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <Label htmlFor={id} className="text-xs text-muted-foreground">
           {multi ? `Frage ${index + 1}` : "Fragetext"}
-        </label>
+        </Label>
         {onRemove && (
-          <button onClick={onRemove} className="inline-flex items-center gap-1 text-xs text-muted hover:text-bad">
-            <Trash2 aria-hidden className="size-3" /> Entfernen<span className="sr-only">: Frage {index + 1}</span>
-          </button>
+          <Button variant="ghost" size="sm" onClick={onRemove} className="text-muted-foreground hover:text-destructive">
+            <Trash2 aria-hidden /> Entfernen<span className="sr-only">: Frage {index + 1}</span>
+          </Button>
         )}
       </div>
-      <input
+      <Input
         id={id}
         name={id}
         value={q.text}
         onChange={(e) => onChange({ text: e.target.value })}
         placeholder="z. B. Wird die DLL von einem Prozess geladen?"
         autoComplete="off"
-        className="field"
+        aria-invalid={invalid || undefined}
+        className="h-8 text-[13px] md:text-[13px]"
       />
-      {!multi && <p className="mt-1 text-xs text-muted">Atomar fragen, die Entscheidung trifft der Code.</p>}
+      {!multi && <p className="mt-1 text-xs text-muted-foreground">Atomar fragen, die Entscheidung trifft der Code.</p>}
 
       <div className="mt-3 flex items-center justify-between gap-3">
-        <span className="text-xs text-muted">Antworttyp</span>
+        <span className="text-xs text-muted-foreground">Antworttyp</span>
         <Segmented
           label={`Antworttyp Frage ${index + 1}`}
           value={q.type}
@@ -298,59 +326,65 @@ function QuestionEditor({
       <div className="mt-3">
         {q.type === "choice" && (
           <>
-            <p className="mb-1.5 text-xs text-muted">Das Modell verteilt Wahrscheinlichkeit auf 2 bis {MAX_OPTIONS} Optionen.</p>
+            <p className="mb-1.5 text-xs text-muted-foreground">Das Modell verteilt Wahrscheinlichkeit auf 2 bis {MAX_OPTIONS} Optionen.</p>
             <ul className="space-y-1">
               {q.options.map((o, i) => (
-                <li key={i} className="group flex items-center gap-1 rounded-md border border-line-strong bg-canvas focus-within:outline-2 focus-within:outline-offset-1 focus-within:outline-accent hover:border-faint">
-                  <input
+                <li key={i} className="group relative">
+                  <Input
                     value={o}
                     onChange={(e) => setOption(i, e.target.value)}
                     placeholder={`Option ${i + 1}`}
                     aria-label={`Option ${i + 1}`}
                     autoComplete="off"
-                    className="h-7 min-w-0 flex-1 bg-transparent px-2.5 text-[13px] outline-none placeholder:text-faint"
+                    className="pr-8"
                   />
-                  <button
-                    onClick={() => onChange({ options: q.options.filter((_, j) => j !== i) })}
-                    disabled={q.options.length <= 2}
-                    className="mr-0.5 grid size-6 place-items-center rounded text-faint opacity-0 hover:text-bad focus-visible:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100 disabled:hidden"
-                    aria-label={`Option ${i + 1} entfernen`}
-                  >
-                    <X aria-hidden className="size-3.5" />
-                  </button>
+                  {q.options.length > 2 && (
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => onChange({ options: q.options.filter((_, j) => j !== i) })}
+                      aria-label={`Option ${i + 1} entfernen`}
+                      className="absolute right-1 top-1 text-muted-foreground opacity-0 hover:text-destructive focus-visible:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100"
+                    >
+                      <X aria-hidden />
+                    </Button>
+                  )}
                 </li>
               ))}
             </ul>
             <div className="mt-1.5 flex items-center justify-between">
-              <button onClick={() => onChange({ options: [...q.options, ""] })} disabled={q.options.length >= MAX_OPTIONS} className="btn-ghost !h-7 !px-2 text-xs">
-                <Plus aria-hidden className="size-3.5" /> Option
-              </button>
-              <span className="text-xs tabular-nums text-muted">{q.options.length} von {MAX_OPTIONS}</span>
+              <Button variant="ghost" size="sm" onClick={() => onChange({ options: [...q.options, ""] })} disabled={q.options.length >= MAX_OPTIONS}>
+                <Plus aria-hidden /> Option
+              </Button>
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {q.options.length} von {MAX_OPTIONS}
+              </span>
             </div>
           </>
         )}
-        {q.type === "noul" && (
-          <p className="text-xs text-muted">Das Modell liefert P(wahr). Zwischen 0,3 und 0,7 gilt die Antwort als unklar.</p>
-        )}
+        {q.type === "noul" && <p className="text-xs text-muted-foreground">Das Modell liefert P(wahr). Zwischen 0,3 und 0,7 gilt die Antwort als unklar.</p>}
         {q.type === "score" && (
           <div className="space-y-2">
-            <p className="text-xs text-muted">Verteilung über 2 bis 10 Level, angezeigt mit Modus und Erwartungswert.</p>
+            <p className="text-xs text-muted-foreground">Verteilung über 2 bis 10 Level, angezeigt mit Modus und Erwartungswert.</p>
             <div className="flex items-center gap-2">
-              <label className="flex items-center gap-2 text-xs text-muted">
+              <Label htmlFor={`${id}-levels`} className="text-xs font-normal text-muted-foreground">
                 Level
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={2}
-                  max={10}
-                  value={q.levels}
-                  onChange={(e) => onChange({ levels: Math.min(10, Math.max(2, Number(e.target.value) || 2)) })}
-                  className="field !w-14 text-center tabular-nums"
-                />
-              </label>
-              <input value={q.scoreLow} onChange={(e) => onChange({ scoreLow: e.target.value })} className="field min-w-0 flex-1" aria-label="Bezeichnung Level 1" autoComplete="off" />
-              <span aria-hidden className="text-faint">bis</span>
-              <input value={q.scoreHigh} onChange={(e) => onChange({ scoreHigh: e.target.value })} className="field min-w-0 flex-1" aria-label="Bezeichnung höchstes Level" autoComplete="off" />
+              </Label>
+              <Input
+                id={`${id}-levels`}
+                type="number"
+                inputMode="numeric"
+                min={2}
+                max={10}
+                value={q.levels}
+                onChange={(e) => onChange({ levels: Math.min(10, Math.max(2, Number(e.target.value) || 2)) })}
+                className="w-14 text-center tabular-nums"
+              />
+              <Input value={q.scoreLow} onChange={(e) => onChange({ scoreLow: e.target.value })} aria-label="Bezeichnung Level 1" autoComplete="off" />
+              <span aria-hidden className="text-faint">
+                bis
+              </span>
+              <Input value={q.scoreHigh} onChange={(e) => onChange({ scoreHigh: e.target.value })} aria-label="Bezeichnung höchstes Level" autoComplete="off" />
             </div>
           </div>
         )}

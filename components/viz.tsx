@@ -49,7 +49,7 @@ export function ChoiceMatrix({ labels, cols }: { labels: string[]; cols: Col[] }
         <div role="row" className="grid items-end gap-x-3 pb-2" style={{ gridTemplateColumns: template }}>
           <span role="columnheader"><span className="sr-only">Option</span></span>
           {cols.map((c) => (
-            <span key={c.key} role="columnheader" className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted">
+            <span key={c.key} role="columnheader" className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground">
               <Dot color={c.color} />
               <span className="truncate">{c.name}</span>
             </span>
@@ -57,8 +57,8 @@ export function ChoiceMatrix({ labels, cols }: { labels: string[]; cols: Col[] }
         </div>
       )}
       {labels.map((l, i) => (
-        <div key={i} role="row" className="grid items-center gap-x-3 border-t border-line py-[3px]" style={{ gridTemplateColumns: template }}>
-          <span role="rowheader" className="truncate pr-2 text-[13px] text-muted" title={l}>
+        <div key={i} role="row" className="grid items-center gap-x-3 border-t border-border py-[3px]" style={{ gridTemplateColumns: template }}>
+          <span role="rowheader" className="truncate pr-2 text-[13px] text-muted-foreground" title={l}>
             {l}
           </span>
           {cols.map((c) => {
@@ -74,8 +74,8 @@ export function ChoiceMatrix({ labels, cols }: { labels: string[]; cols: Col[] }
                   transition={spring}
                 />
                 {top && <span aria-hidden className="absolute inset-y-0 left-0 w-[2px]" style={{ background: c.color }} />}
-                <span aria-hidden className="absolute inset-y-0 w-px border-l border-dashed border-ink/25" style={{ left: `${100 / k}%` }} />
-                <span className={`relative flex h-full items-center px-2 tabular-nums ${top ? "font-semibold text-ink" : "text-muted"}`}>
+                <span aria-hidden className="absolute inset-y-0 w-px border-l border-dashed border-foreground/25" style={{ left: `${100 / k}%` }} />
+                <span className={`relative flex h-full items-center px-2 tabular-nums ${top ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
                   {fmtPct(c.probs[i])}
                 </span>
               </div>
@@ -84,7 +84,7 @@ export function ChoiceMatrix({ labels, cols }: { labels: string[]; cols: Col[] }
         </div>
       ))}
       <p className="mt-2 flex items-center gap-2 text-xs text-faint">
-        <span aria-hidden className="inline-block h-3 border-l border-dashed border-ink/40" />
+        <span aria-hidden className="inline-block h-3 border-l border-dashed border-foreground/40" />
         Zufallsniveau 1/K = <span className="tabular-nums">{fmtPct(1 / k)}</span>
       </p>
     </div>
@@ -98,7 +98,7 @@ export function NoulScale({ pTrue, color }: { pTrue: number; color: string }) {
   return (
     <div role="img" aria-label={`P(wahr) ${fmtPct(pTrue)}, Zone unklar zwischen 0,3 und 0,7`}>
       <div className="relative h-5">
-        <div className="absolute inset-x-0 top-2 h-1.5 overflow-hidden rounded-full bg-sunken-2">
+        <div className="absolute inset-x-0 top-2 h-1.5 overflow-hidden rounded-full bg-accent">
           <div className="hatch absolute inset-y-0 bg-warn-soft" style={{ left: `${lo * 100}%`, width: `${(hi - lo) * 100}%` }} />
         </div>
         <motion.div
@@ -143,7 +143,7 @@ export function ScoreChart({ probs, color, low, high }: { probs: number[]; color
         <div className="flex items-end gap-1" style={{ height: H + 16 }}>
           {probs.map((p, i) => (
             <div key={i} className="flex h-full flex-1 flex-col items-center justify-end">
-              <span className={`mb-0.5 text-[11px] tabular-nums ${i === mode ? "font-semibold text-ink" : "text-faint"}`}>{fmtPct(p, 0)}</span>
+              <span className={`mb-0.5 text-[11px] tabular-nums ${i === mode ? "font-semibold text-foreground" : "text-faint"}`}>{fmtPct(p, 0)}</span>
               <motion.div
                 className="w-full rounded-t-[3px]"
                 style={{ background: i === mode ? color : tint(color, 28) }}
@@ -154,9 +154,9 @@ export function ScoreChart({ probs, color, low, high }: { probs: number[]; color
             </div>
           ))}
         </div>
-        <div aria-hidden className="pointer-events-none absolute inset-y-0 border-l border-dashed border-ink/50" style={{ left: `${((e - 0.5) / n) * 100}%` }} />
+        <div aria-hidden className="pointer-events-none absolute inset-y-0 border-l border-dashed border-foreground/50" style={{ left: `${((e - 0.5) / n) * 100}%` }} />
       </div>
-      <div className="flex gap-1 border-t border-line pt-1 text-[11px] tabular-nums text-muted">
+      <div className="flex gap-1 border-t border-border pt-1 text-[11px] tabular-nums text-muted-foreground">
         {probs.map((_, i) => (
           <span key={i} className="flex-1 text-center">{i + 1}</span>
         ))}

@@ -1,82 +1,109 @@
 "use client";
 
 import { Braces, FlaskConical, Moon, Sun } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useTheme } from "next-themes";
+import { useSyncExternalStore } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverDescription, PopoverHeader, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { SimulatedError } from "@/lib/mock-run";
 
 type Props = {
-  dark: boolean;
-  onToggleTheme: () => void;
   onToggleInspector: () => void;
   inspectorOpen: boolean;
   simulate: SimulatedError;
   onSimulate: (s: SimulatedError) => void;
 };
 
-export function Toolbar(p: Props) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+const noop = () => () => {};
 
-  useEffect(() => {
-    if (!open) return;
-    const down = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const key = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("mousedown", down);
-    document.addEventListener("keydown", key);
-    return () => {
-      document.removeEventListener("mousedown", down);
-      document.removeEventListener("keydown", key);
-    };
-  }, [open]);
+const SIMULATIONS = [
+  ["none", "Kein Fehler"],
+  ["timeout", "Timeout"],
+  ["overflow", "Overflow (HTTP 400)"],
+] as const;
+
+export function Toolbar(p: Props) {
+  const { resolvedTheme, setTheme } = useTheme();
+  // Das Theme steht erst im Browser fest; bis zur Hydration gilt "hell", damit Server und Client übereinstimmen.
+  const mounted = useSyncExternalStore(noop, () => true, () => false);
+  const dark = mounted && resolvedTheme === "dark";
 
   return (
-    <>
-      <span className="mr-2 hidden text-xs text-muted md:inline">Mock, keine echten Modellaufrufe</span>
+    <div className="flex items-center gap-0.5">
+      <Badge variant="outline" className="mr-2 hidden md:inline-flex">
+        Mock
+      </Badge>
 
-      <div className="relative" ref={ref}>
-        <button
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-          aria-haspopup="true"
-          className={`icon-btn ${p.simulate !== "none" ? "!text-warn" : ""}`}
-          aria-label="Fehler simulieren"
-        >
-          <FlaskConical aria-hidden className="size-4" />
-        </button>
-        {open && (
-          <fieldset className="absolute right-0 top-full z-20 mt-1 w-64 rounded-md border border-line-strong bg-canvas p-3 shadow-xl">
-            <legend className="sr-only">Fehler simulieren</legend>
-            <p className="section-title mb-1" aria-hidden>Fehler simulieren</p>
-            <p className="mb-2 text-xs text-muted">Betrifft das zuletzt gewählte Modell. Fehler erscheinen nie als Antwort.</p>
-            {(
-              [
-                ["none", "Kein Fehler"],
-                ["timeout", "Timeout"],
-                ["overflow", "Overflow (HTTP 400)"],
-              ] as const
-            ).map(([v, label]) => (
-              <label key={v} className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 hover:bg-sunken">
-                <input type="radio" name="sim" checked={p.simulate === v} onChange={() => p.onSimulate(v)} className="accent-[var(--ink)]" />
+      <Popover>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <PopoverTrigger
+                render={
+                  <Button variant="ghost" size="icon" aria-label="Fehler simulieren" className={p.simulate !== "none" ? "text-warn" : "text-muted-foreground"} />
+                }
+              />
+            }
+          >
+            <FlaskConical aria-hidden />
+          </TooltipTrigger>
+          <TooltipContent>Fehler simulieren</TooltipContent>
+        </Tooltip>
+        <PopoverContent align="end" className="w-64">
+          <PopoverHeader>
+            <PopoverTitle>Fehler simulieren</PopoverTitle>
+            <PopoverDescription>Betrifft das zuletzt gewählte Modell. Fehler erscheinen nie als Antwort.</PopoverDescription>
+          </PopoverHeader>
+          <RadioGroup value={p.simulate} onValueChange={(v) => p.onSimulate(v as SimulatedError)} aria-label="Fehlerart">
+            {SIMULATIONS.map(([v, label]) => (
+              <Label key={v} className="flex cursor-pointer items-center gap-2 font-normal">
+                <RadioGroupItem value={v} />
                 {label}
-              </label>
+              </Label>
             ))}
-          </fieldset>
-        )}
-      </div>
+          </RadioGroup>
+        </PopoverContent>
+      </Popover>
 
-      <button
-        onClick={p.onToggleInspector}
-        aria-pressed={p.inspectorOpen}
-        className={`icon-btn ${p.inspectorOpen ? "!bg-sunken-2 !text-ink" : ""}`}
-        aria-label="Request-Inspektor"
-      >
-        <Braces aria-hidden className="size-4" />
-      </button>
-      <button onClick={p.onToggleTheme} className="icon-btn" aria-label={p.dark ? "Hellen Modus aktivieren" : "Dunklen Modus aktivieren"}>
-        {p.dark ? <Sun aria-hidden className="size-4" /> : <Moon aria-hidden className="size-4" />}
-      </button>
-    </>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Request-Inspektor"
+              aria-pressed={p.inspectorOpen}
+              onClick={p.onToggleInspector}
+              className="text-muted-foreground aria-pressed:bg-accent aria-pressed:text-foreground"
+            />
+          }
+        >
+          <Braces aria-hidden />
+        </TooltipTrigger>
+        <TooltipContent>Request-Inspektor</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={dark ? "Hellen Modus aktivieren" : "Dunklen Modus aktivieren"}
+              onClick={() => setTheme(dark ? "light" : "dark")}
+              className="text-muted-foreground"
+            />
+          }
+        >
+          <Sun aria-hidden className="hidden dark:block" />
+          <Moon aria-hidden className="dark:hidden" />
+        </TooltipTrigger>
+        <TooltipContent>{dark ? "Heller Modus" : "Dunkler Modus"}</TooltipContent>
+      </Tooltip>
+    </div>
   );
 }

@@ -1,30 +1,22 @@
 "use client";
 
 import { MotionConfig } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { download, seedHistory, toCsv, toJson } from "@/lib/history";
 import { DEFAULT_MODEL, PRESETS, newQuestion, presetById, uid } from "@/lib/mock-data";
 import { mockRun, type SimulatedError } from "@/lib/mock-run";
 import type { Fact, HistoryEntry, Mode, ModelId, ModelState, Question } from "@/lib/types";
+import { AppSidebar } from "./app-sidebar";
 import { InputPanel, validate, type Invalid } from "./input-panel";
 import { Inspector } from "./inspector";
 import { OutputPanel } from "./output-panel";
-import { Sidebar } from "./sidebar";
 import { Toolbar } from "./toolbar";
 
 const FIRST = PRESETS[0];
 
-function subscribeTheme(cb: () => void) {
-  const mo = new MutationObserver(cb);
-  mo.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-  return () => mo.disconnect();
-}
-const isDark = () => document.documentElement.classList.contains("dark");
-
 export function Playground() {
-  const dark = useSyncExternalStore(subscribeTheme, isDark, () => false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [mobileSidebar, setMobileSidebar] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [inspectModel, setInspectModel] = useState<ModelId>(DEFAULT_MODEL);
 
@@ -41,44 +33,32 @@ export function Playground() {
   const [states, setStates] = useState<Record<string, ModelState | undefined>>({});
   const [history, setHistory] = useState<HistoryEntry[]>(seedHistory);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [undo, setUndo] = useState<{ entry: HistoryEntry; index: number } | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearTimers = () => {
     timers.current.forEach(clearTimeout);
     timers.current = [];
   };
-  useEffect(
-    () => () => {
-      timers.current.forEach(clearTimeout);
-      if (undoTimer.current) clearTimeout(undoTimer.current);
-    },
-    [],
-  );
-
-  const toggleTheme = () => {
-    const next = !dark;
-    document.documentElement.classList.toggle("dark", next);
-    try {
-      localStorage.setItem("theme", next ? "dark" : "light");
-    } catch {}
-  };
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
   const running = models.some((m) => states[m]?.status === "running");
+
+  const reset = () => {
+    clearTimers();
+    setStates({});
+    setActiveId(null);
+    setInvalid(null);
+  };
 
   const loadPreset = (id: string) => {
     const p = presetById(id);
     if (!p) return;
-    clearTimers();
+    reset();
     setPresetId(id);
     setMode(p.mode);
     setState(p.state);
     setFacts(p.facts);
     setQuestions(p.questions);
-    setStates({});
-    setActiveId(null);
-    setInvalid(null);
   };
 
   const changeMode = (m: Mode) => {
@@ -88,16 +68,12 @@ export function Playground() {
   };
 
   const newRun = () => {
-    clearTimers();
+    reset();
     setPresetId(null);
     setMode("single");
     setState("");
     setFacts([]);
     setQuestions([newQuestion("choice")]);
-    setStates({});
-    setActiveId(null);
-    setInvalid(null);
-    setMobileSidebar(false);
   };
 
   const run = useCallback(() => {
@@ -150,7 +126,7 @@ export function Playground() {
   }, [state, facts, questions, average, models, simulate, presetId, mode]);
 
   const selectHistory = (h: HistoryEntry) => {
-    clearTimers();
+    reset();
     setPresetId(h.presetId);
     setMode(h.mode);
     setState(h.state);
@@ -160,23 +136,19 @@ export function Playground() {
     setAverage(h.average);
     setStates(Object.fromEntries(h.runs.map((r) => [r.modelId, { status: "done", run: r } as ModelState])));
     setActiveId(h.id);
-    setInvalid(null);
-    setMobileSidebar(false);
   };
 
   const deleteHistory = (id: string) => {
     const index = history.findIndex((h) => h.id === id);
     if (index < 0) return;
-    setUndo({ entry: history[index], index });
+    const entry = history[index];
     setHistory((h) => h.filter((x) => x.id !== id));
-    if (undoTimer.current) clearTimeout(undoTimer.current);
-    undoTimer.current = setTimeout(() => setUndo(null), 6000);
-  };
-
-  const undoDelete = () => {
-    if (!undo) return;
-    setHistory((h) => [...h.slice(0, undo.index), undo.entry, ...h.slice(undo.index)]);
-    setUndo(null);
+    toast(`„${entry.title}“ gelöscht`, {
+      action: {
+        label: "Rückgängig",
+        onClick: () => setHistory((h) => [...h.slice(0, index), entry, ...h.slice(index)]),
+      },
+    });
   };
 
   const exportHistory = (kind: "json" | "csv") =>
@@ -200,39 +172,21 @@ export function Playground() {
     if (!m.includes(inspectModel)) setInspectModel(m[0]);
   };
 
-  const closeInspector = useCallback(() => setInspectorOpen(false), []);
-
   return (
     <MotionConfig reducedMotion="user">
-      <div className="flex h-dvh overflow-hidden">
-        {mobileSidebar && (
-          <button className="fixed inset-0 z-20 bg-black/40 lg:hidden" onClick={() => setMobileSidebar(false)} aria-label="Verlauf schließen" />
-        )}
-        <div
-          className={`fixed inset-y-0 left-0 z-30 transition-transform lg:static lg:z-auto lg:translate-x-0 ${
-            mobileSidebar ? "translate-x-0" : "-translate-x-full"
-          } ${sidebarOpen ? "" : "lg:hidden"}`}
-        >
-          <Sidebar
-            history={history}
-            activeId={activeId}
-            onSelect={selectHistory}
-            onNew={newRun}
-            onDelete={deleteHistory}
-            onExport={exportHistory}
-            onClose={() => setMobileSidebar(false)}
-            undo={undo ? { title: undo.entry.title } : null}
-            onUndo={undoDelete}
-          />
-        </div>
+      <SidebarProvider className="h-svh min-h-0" style={{ "--sidebar-width": "15rem" } as React.CSSProperties}>
+        <AppSidebar
+          history={history}
+          activeId={activeId}
+          onSelect={selectHistory}
+          onNew={newRun}
+          onDelete={deleteHistory}
+          onExport={exportHistory}
+        />
 
-        <main className="flex min-w-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
+        <SidebarInset className="min-w-0 overflow-y-auto lg:flex-row lg:overflow-hidden">
           <InputPanel
             title={title}
-            onToggleSidebar={() => {
-              if (window.matchMedia("(min-width: 1024px)").matches) setSidebarOpen((o) => !o);
-              else setMobileSidebar((o) => !o);
-            }}
             mode={mode}
             onMode={changeMode}
             presetId={presetId}
@@ -261,8 +215,6 @@ export function Playground() {
             }}
             toolbar={
               <Toolbar
-                dark={dark}
-                onToggleTheme={toggleTheme}
                 onToggleInspector={() => {
                   setInspectModel((m) => (models.includes(m) ? m : models[0]));
                   setInspectorOpen((o) => !o);
@@ -273,18 +225,17 @@ export function Playground() {
               />
             }
           />
-        </main>
+        </SidebarInset>
 
-        {inspectorOpen && (
-          <Inspector
-            models={models}
-            states={states}
-            modelId={models.includes(inspectModel) ? inspectModel : models[0]}
-            onModel={setInspectModel}
-            onClose={closeInspector}
-          />
-        )}
-      </div>
+        <Inspector
+          open={inspectorOpen}
+          onOpenChange={setInspectorOpen}
+          models={models}
+          states={states}
+          modelId={models.includes(inspectModel) ? inspectModel : models[0]}
+          onModel={setInspectModel}
+        />
+      </SidebarProvider>
     </MotionConfig>
   );
 }
