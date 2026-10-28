@@ -18,8 +18,9 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { groupOf, timeLabel } from "@/lib/history";
 import { modelById } from "@/lib/mock-data";
-import type { HistoryEntry } from "@/lib/types";
+import type { HistoryEntry, HistoryGroup } from "@/lib/types";
 import { ResizeHandle } from "./resize-handle";
 import { Dot } from "./viz";
 
@@ -35,7 +36,7 @@ type Props = {
   onWidth: (w: number) => void;
 };
 
-const GROUPS: HistoryEntry["group"][] = ["Heute", "Gestern", "Diese Woche"];
+const GROUPS: HistoryGroup[] = ["Heute", "Gestern", "Diese Woche", "Älter"];
 
 export function AppSidebar({
   history,
@@ -97,7 +98,7 @@ export function AppSidebar({
 
       <SidebarContent>
         {GROUPS.map((g) => {
-          const items = filtered.filter((h) => h.group === g);
+          const items = filtered.filter((h) => groupOf(h.at) === g);
           if (!items.length) return null;
           return (
             <SidebarGroup key={g} className="py-1">
@@ -119,7 +120,7 @@ export function AppSidebar({
                         <span className="flex min-w-0 flex-col gap-0.5">
                           <span className="truncate text-[13px] font-medium">{h.title}</span>
                           <span className="flex items-center gap-2 text-xs font-normal text-muted-foreground">
-                            <span className="tabular-nums">{h.time}</span>
+                            <span className="tabular-nums">{timeLabel(h.at)}</span>
                             <span className="flex gap-1">
                               {h.models.map((m) => (
                                 <span key={m} className="inline-flex" title={modelById(m).label}>
@@ -135,7 +136,7 @@ export function AppSidebar({
                       <SidebarMenuAction
                         showOnHover
                         onClick={() => onDelete(h.id)}
-                        aria-label={`Lauf „${h.title}“ löschen`}
+                        aria-label={`Lauf „${h.title}“ (${timeLabel(h.at)}) löschen`}
                       >
                         <X aria-hidden />
                       </SidebarMenuAction>
@@ -152,10 +153,10 @@ export function AppSidebar({
       <SidebarFooter className="border-t border-sidebar-border">
         <p className="px-1 text-xs font-medium text-faint">Verlauf exportieren</p>
         <div className="flex gap-1">
-          <Button variant="outline" className="flex-1" onClick={() => onExport("json")}>
+          <Button variant="outline" className="flex-1" disabled={!history.length} onClick={() => onExport("json")}>
             <Download aria-hidden /> JSON
           </Button>
-          <Button variant="outline" className="flex-1" onClick={() => onExport("csv")}>
+          <Button variant="outline" className="flex-1" disabled={!history.length} onClick={() => onExport("csv")}>
             <Download aria-hidden /> CSV
           </Button>
         </div>

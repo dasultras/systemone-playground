@@ -11,10 +11,6 @@ export type Question = {
   levels: number;
   scoreLow: string;
   scoreHigh: string;
-  /** Nur Mock: Index der "richtigen" Antwort (Choice/Score) bzw. 0 = wahr, 1 = unwahr (Noul). */
-  mockTruth?: number;
-  /** Nur Mock: zweiter Gipfel, den schwächere Modelle mit ausgeben. */
-  mockSecond?: number;
 };
 
 export type ModelId = "jev-latest" | "elephant-1:9b-q4-ctx8k" | "clef-flash" | "pplx-decider";
@@ -27,10 +23,6 @@ export type ModelInfo = {
   contextTokens: number;
   size: string;
   color: string;
-  /** Mock-Profil */
-  sharpness: number;
-  noise: number;
-  baseLatencyMs: number;
 };
 
 export type Fact = { key: string; value: string };
@@ -86,11 +78,13 @@ export type ModelRun = {
 export type ModelState =
   { status: "idle" } | { status: "running"; startedAt: number } | { status: "done"; run: ModelRun };
 
+export type HistoryGroup = "Heute" | "Gestern" | "Diese Woche" | "Älter";
+
 export type HistoryEntry = {
   id: string;
   title: string;
-  time: string;
-  group: "Heute" | "Gestern" | "Diese Woche";
+  /** Ende des Laufs in ms seit Epoch; Gruppe und Uhrzeit leiten sich daraus ab. */
+  at: number;
   mode: Mode;
   presetId: string | null;
   state: string;

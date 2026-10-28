@@ -10,9 +10,8 @@ import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Label } from "@/components/ui/label";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Textarea } from "@/components/ui/textarea";
-import { estimateTokens, fmtInt } from "@/lib/limits";
+import { estimateTokens, fmtInt, fullStateText } from "@/lib/limits";
 import { MODELS, PRESETS, newQuestion } from "@/lib/mock-data";
-import { fullStateText } from "@/lib/mock-run";
 import type { Fact, Mode, ModelId, Question, QuestionType } from "@/lib/types";
 import { Group, GroupRow } from "./group";
 import { OptionsEditor } from "./options-editor";
@@ -71,11 +70,7 @@ export function InputPanel(p: Props) {
   const hosted = p.models.some((id) => MODELS.find((m) => m.id === id)?.hosted);
 
   const update = (id: string, patch: Partial<Question>) =>
-    p.onQuestions(
-      p.questions.map((q) =>
-        q.id === id ? { ...q, ...patch, ...(patch.type ? { mockTruth: undefined, mockSecond: undefined } : {}) } : q,
-      ),
-    );
+    p.onQuestions(p.questions.map((q) => (q.id === id ? { ...q, ...patch } : q)));
 
   const setModel = (id: ModelId, on: boolean) => {
     if (!on && p.models.length > 1) p.onModels(p.models.filter((m) => m !== id));
@@ -214,6 +209,7 @@ export function InputPanel(p: Props) {
                 >
                   <Checkbox
                     id={id}
+                    aria-label={m.label}
                     checked={on}
                     disabled={locked}
                     onCheckedChange={(v) => setModel(m.id, v === true)}
@@ -394,7 +390,7 @@ function QuestionEditor({
             max={10}
             value={q.levels}
             onChange={(e) => onChange({ levels: Math.min(10, Math.max(2, Number(e.target.value) || 2)) })}
-            className="w-14 text-center tabular-nums"
+            className="w-14 shrink-0 text-center tabular-nums"
           />
           <Input
             value={q.scoreLow}

@@ -1,10 +1,10 @@
 "use client";
 
 import { MotionConfig } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { download, seedHistory, toCsv, toJson } from "@/lib/history";
+import { NO_HISTORY, download, readHistory, subscribeHistory, toCsv, toJson, writeHistory } from "@/lib/history";
 import { DEFAULT_MODEL, PRESETS, newQuestion, presetById, uid } from "@/lib/mock-data";
 import { postRun } from "@/lib/run";
 import type { Fact, HistoryEntry, Mode, ModelId, ModelState, Question } from "@/lib/types";
@@ -42,7 +42,8 @@ export function Playground() {
   const [invalid, setInvalid] = useState<Invalid | null>(null);
 
   const [states, setStates] = useState<Record<string, ModelState | undefined>>({});
-  const [history, setHistory] = useState<HistoryEntry[]>(seedHistory);
+  // Server und erster Client-Render ohne Verlauf; er erscheint nach der Hydration.
+  const history = useSyncExternalStore(subscribeHistory, readHistory, () => NO_HISTORY);
   const [activeId, setActiveId] = useState<string | null>(null);
   const abort = useRef<AbortController | null>(null);
 
@@ -110,19 +111,18 @@ export function Playground() {
     if (ctrl.signal.aborted) return;
     const first = sent[0].text;
     const id = uid("h");
-    setHistory((h) => [
+    writeHistory([
       {
         id,
         title: presetById(presetId ?? "")?.title ?? (first.length > 36 ? `${first.slice(0, 36)}…` : first),
-        time: new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
-        group: "Heute",
+        at: Date.now(),
         mode,
         presetId,
         ...snapshot,
         models,
         runs,
       },
-      ...h,
+      ...readHistory(),
     ]);
     setActiveId(id);
   }, [state, facts, questions, average, models, presetId, mode]);
@@ -141,14 +141,19 @@ export function Playground() {
   };
 
   const deleteHistory = (id: string) => {
-    const index = history.findIndex((h) => h.id === id);
-    if (index < 0) return;
-    const entry = history[index];
-    setHistory((h) => h.filter((x) => x.id !== id));
+    const entry = history.find((h) => h.id === id);
+    if (!entry) return;
+    writeHistory(history.filter((x) => x.id !== id));
     toast(`„${entry.title}“ gelöscht`, {
+      duration: 8000,
       action: {
         label: "Rückgängig",
-        onClick: () => setHistory((h) => [...h.slice(0, index), entry, ...h.slice(index)]),
+        // Nach Zeitpunkt einsortieren, auch wenn inzwischen neue Läufe dazugekommen sind.
+        onClick: () => {
+          const h = readHistory();
+          const i = h.findIndex((x) => x.at < entry.at);
+          writeHistory(i < 0 ? [...h, entry] : [...h.slice(0, i), entry, ...h.slice(i)]);
+        },
       },
     });
   };
@@ -156,7 +161,8 @@ export function Playground() {
   const exportHistory = (kind: "json" | "csv") =>
     kind === "json"
       ? download("playground-historie.json", toJson(history), "application/json")
-      : download("playground-historie.csv", toCsv(history), "text/csv");
+      : // BOM, damit Excel die Datei als UTF-8 liest (Umlaute).
+        download("playground-historie.csv", `\uFEFF${toCsv(history)}`, "text/csv");
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
