@@ -55,19 +55,22 @@ UI ── POST /api/run ──▶ Route Handler (Guard) ──▶ TypeSafeClient
 - **Logs nur mit Metadaten**, ohne State-Inhalt. Next-Telemetrie aus.
 - **TypeSafe nur mit synthetischen Daten** (US-Hosting). Die UI zeigt dort einen Hinweis.
 
-## Schritte
+## Stand
 
-1. Setup: Next.js, Tailwind, shadcn/ui, Zod-Schemas für Fragen und Antworten
-2. `/api/run` + Client + Guard, zuerst gegen Ollama, dann TypeSafe; `lib/metrics.ts` mit Tests
-3. UI: Eingabe, Ergebnis, Presets, Request-Inspektor
-4. Vergleich, Reihenfolge mitteln, Historie mit JSON/CSV-Export
-5. Docker, `/api/health`, CI nach GHCR, Compose mit `host.docker.internal`
-6. Politur: Dark Mode, Animationen, Fehlerzustände, Mobile
-7. Evaluation (separates Skript):
-   - ca. 600 synthetische, gelabelte Items, Split 200/400
-   - Brier, NLL, ECE, Risk-Coverage, Bootstrap-KI
-   - lokal roh, mit Mitteln und mit Temperature Scaling, gegenüber Jev
+Schritte 1–7 umgesetzt:
+
+- UI mit Presets, Vergleich mehrerer Modelle, Reihenfolge mitteln, Request-Inspektor.
+- Historie in `localStorage` (höchstens 50 Läufe), Export als JSON/CSV.
+- Fehlerzustände je Modell mit Wiederholen, Dark Mode (System/Hell/Dunkel), Mobile, dezente Animationen.
+- `/api/run`, `/api/health`, Docker, CI nach GHCR.
+- Evaluation (`npm run eval`, `eval/`, Kennzahlen in `lib/calibration.ts`):
+  - 600 synthetische, gelabelte Items (120 States × 5 Fragen, leicht/schwer), Split 200/400 nach States.
+  - Brier, NLL, ECE, Risk-Coverage/AURC, Cluster-Bootstrap-KI, Temperature Scaling auf dem Kalibrierungs-Split.
+  - Ergebnisse unter `eval/out/` (nicht im Repo), Cache pro Frage, Läufe setzen fort.
+  - `jev-latest` nur mit `EVAL_ALLOW_TYPESAFE=1`.
 
 ## Offen
 
+- Eval-Items sind zu leicht: elephant liegt auf dem Test-Split bei 98,5 % Accuracy, AURC ≈ 0,001. Schwere Varianten verraten die Antwort (geladene Prozesse, Nachbardateien, exakte Tage). Sie müssen härter werden, danach ist ein neuer Lauf nötig.
+- Eval-Läufe: elephant gemittelt ×3 ist erst zu 50 von 120 States fertig. clef-flash steht noch aus, der Vergleich mit Jev ebenfalls (nur mit Freigabe).
 - Latenzen für die Arbeit in Ruhe messen: ein Modell geladen, State pro Lauf variieren (clef-flash cached identische Requests).
