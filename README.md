@@ -25,6 +25,15 @@ npm run dev
 Es gibt einen [Dev Container](.devcontainer/devcontainer.json) (Node 24, docker-in-docker, gh), in VS Code
 „Reopen in Container".
 
+## Kompatible Backends
+
+Kompatibel mit jedem Server, der das System-One-Schema (`/v1/systemone`) spricht, angebunden über die Base-URL:
+
+- **TypeSafe** (`api.typesafe.ai`), gehostet
+- **[Ollama](https://docs.ollama.com/api/systemone)** (`localhost:11434`), lokal
+- **[vLLM](https://docs.vllm.ai/en/latest/models/structured_decisions_models/#example)** (`localhost:8000`): Start mit
+  `--logprobs-mode raw_logprobs`, max. 64 Fragen pro Request, unbekannte Felder geben 400.
+
 ## Docker
 
 ```bash
