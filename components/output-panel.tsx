@@ -5,7 +5,6 @@ import type { ReactNode } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -13,6 +12,7 @@ import { fmtInt } from "@/lib/limits";
 import { labelsFor, modelById } from "@/lib/mock-data";
 import { expectedScore, fmtNum, fmtPct, noulVerdict } from "@/lib/metrics";
 import type { Answer, ModelId, ModelRun, ModelState, Preset, Question } from "@/lib/types";
+import { Panel } from "./group";
 import { ChoiceMatrix, Dot, NoulScale, ScoreChart, Verdict, gridTemplate, type Col } from "./viz";
 
 type States = Record<string, ModelState | undefined>;
@@ -56,7 +56,7 @@ export function OutputPanel({ questions, models, states, rule, onInspect, toolba
       id="ergebnis"
       tabIndex={-1}
       aria-labelledby="ergebnis-h"
-      className="flex min-w-0 shrink-0 flex-col outline-none lg:min-h-0 lg:flex-1 lg:shrink"
+      className="flex min-w-0 shrink-0 flex-col bg-background outline-none lg:min-h-0 lg:flex-1 lg:shrink"
     >
       <header className="flex h-11 shrink-0 items-center gap-4 border-b px-6">
         <h2 id="ergebnis-h" className="text-[13px] font-semibold">
@@ -95,11 +95,9 @@ export function OutputPanel({ questions, models, states, rule, onInspect, toolba
         </div>
       ) : (
         <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
-          <div className="mx-auto max-w-[860px] px-6 pb-10">
+          <div className="mx-auto max-w-[860px] space-y-4 px-6 pt-5 pb-10">
             {singleError ? (
-              <div className="pt-6">
-                <ErrorNote run={singleError} />
-              </div>
+              <ErrorNote run={singleError} />
             ) : (
               <>
                 {models.length > 1 && <RunTable models={models} states={states} onInspect={onInspect} />}
@@ -119,70 +117,83 @@ export function OutputPanel({ questions, models, states, rule, onInspect, toolba
 
 function RunTable({ models, states, onInspect }: Pick<Props, "models" | "states" | "onInspect">) {
   return (
-    <Table className="mt-4">
-      <TableHeader>
-        <TableRow>
-          <TableHead>Modell</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead className="text-right">Latenz</TableHead>
-          <TableHead className="text-right">Tokens (ein / aus)</TableHead>
-          <TableHead className="w-8">
-            <span className="sr-only">Raw</span>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {models.map((id) => {
-          const m = modelById(id);
-          const s = stateOf(states, id);
-          return (
-            <TableRow key={id}>
-              <TableCell className="font-medium">
-                <span className="inline-flex items-center gap-2">
-                  <Dot color={m.color} />
-                  {m.label}
-                </span>
-              </TableCell>
-              <TableCell>
-                {s.status === "running" && <span className="text-muted-foreground">läuft …</span>}
-                {s.status === "idle" && <span className="text-faint">–</span>}
-                {s.status === "done" &&
-                  (s.run.error ? (
-                    <span className="text-destructive">Fehler</span>
-                  ) : (
-                    <span className="text-ok">fertig</span>
-                  ))}
-              </TableCell>
-              <TableCell className="text-right tabular-nums">
-                {s.status === "done" ? `${fmtNum(s.run.latencyMs / 1000, 1)} s` : "–"}
-              </TableCell>
-              <TableCell className="text-right tabular-nums">
-                {s.status === "done" ? `${fmtInt(s.run.tokensIn)} / ${fmtInt(s.run.tokensOut)}` : "–"}
-              </TableCell>
-              <TableCell className="py-0 text-right">
-                {s.status === "done" && (
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => onInspect(id)}
-                          aria-label={`Raw-Payload von ${m.label} öffnen`}
-                        />
-                      }
-                    >
-                      <Code2 aria-hidden />
-                    </TooltipTrigger>
-                    <TooltipContent>Request und Response</TooltipContent>
-                  </Tooltip>
-                )}
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
+    <Panel head={<PanelTitle>Läufe</PanelTitle>}>
+      <Table className="[&_td:first-child]:pl-4 [&_td:last-child]:pr-3 [&_th:first-child]:pl-4 [&_th:last-child]:pr-3">
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            <TableHead>Modell</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Latenz</TableHead>
+            <TableHead className="text-right">Tokens (ein / aus)</TableHead>
+            <TableHead className="w-8">
+              <span className="sr-only">Raw</span>
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {models.map((id) => {
+            const m = modelById(id);
+            const s = stateOf(states, id);
+            return (
+              <TableRow key={id}>
+                <TableCell className="font-medium">
+                  <span className="inline-flex items-center gap-2">
+                    <Dot color={m.color} />
+                    {m.label}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  {s.status === "running" && <span className="text-muted-foreground">läuft …</span>}
+                  {s.status === "idle" && <span className="text-faint">–</span>}
+                  {s.status === "done" &&
+                    (s.run.error ? (
+                      <span className="text-destructive">Fehler</span>
+                    ) : (
+                      <span className="text-ok">fertig</span>
+                    ))}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {s.status === "done" ? `${fmtNum(s.run.latencyMs / 1000, 1)} s` : "–"}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {s.status === "done" ? `${fmtInt(s.run.tokensIn)} / ${fmtInt(s.run.tokensOut)}` : "–"}
+                </TableCell>
+                <TableCell className="py-0 text-right">
+                  {s.status === "done" && (
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => onInspect(id)}
+                            aria-label={`Raw-Payload von ${m.label} öffnen`}
+                          />
+                        }
+                      >
+                        <Code2 aria-hidden />
+                      </TooltipTrigger>
+                      <TooltipContent>Request und Response</TooltipContent>
+                    </Tooltip>
+                  )}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </Panel>
+  );
+}
+
+function PanelTitle({ children, meta, id }: { children: ReactNode; meta?: ReactNode; id?: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4">
+      <h3 id={id} className="min-w-0 text-[13px] leading-snug font-semibold">
+        {children}
+      </h3>
+      {meta && <span className="shrink-0 text-xs text-muted-foreground">{meta}</span>}
+    </div>
   );
 }
 
@@ -198,12 +209,22 @@ function RuleBlock({
   states: States;
 }) {
   return (
-    <div className="mt-6 border-t pt-5">
-      <h3 className="flex items-center gap-2 text-[15px] font-semibold">
-        <Scale aria-hidden className="size-4 text-muted-foreground" />
-        Entscheidung im Code: {rule.label}
-      </h3>
-      <ul className="mt-3 space-y-1.5">
+    <Panel
+      head={
+        <PanelTitle meta="Wahrheitstabelle, kein Modell">
+          <span className="inline-flex items-center gap-2">
+            <Scale aria-hidden className="size-3.5 text-muted-foreground" />
+            Entscheidung im Code: {rule.label}
+          </span>
+        </PanelTitle>
+      }
+      foot={
+        <p className="py-0.5 text-xs text-muted-foreground">
+          {rule.yes}. {rule.no}. Unklare Antworten (0,3 bis 0,7) lösen nie eine Löschung aus.
+        </p>
+      }
+    >
+      <ul className="divide-y">
         {models.map((id) => {
           const m = modelById(id);
           const s = stateOf(states, id);
@@ -223,7 +244,7 @@ function RuleBlock({
             error: { t: "Kein Ergebnis", c: "text-destructive" },
           }[outcome];
           return (
-            <li key={id} className="flex items-center justify-between gap-3">
+            <li key={id} className="flex min-h-9 items-center justify-between gap-3 px-4">
               <span className="inline-flex items-center gap-2 text-muted-foreground">
                 <Dot color={m.color} />
                 {m.label}
@@ -233,10 +254,7 @@ function RuleBlock({
           );
         })}
       </ul>
-      <p className="mt-3 text-xs text-muted-foreground">
-        {rule.yes}. {rule.no}. Unklare Antworten (0,3 bis 0,7) lösen nie eine Löschung aus.
-      </p>
-    </div>
+    </Panel>
   );
 }
 
@@ -355,61 +373,65 @@ function QuestionBlock({
   const cols: Col[] = rows.map((r) => ({ key: r.id, name: r.name, color: r.color, probs: r.a?.probs ?? null }));
   const loading = rows.some((r) => r.s.status === "running");
 
-  return (
-    <article className="mt-6 border-t pt-5" aria-labelledby={`h-${q.id}`}>
-      <header className="mb-4">
-        <h3 id={`h-${q.id}`} className="text-[15px] leading-snug font-semibold">
-          {total > 1 && <span className="mr-2 font-normal text-faint">{index + 1}.</span>}
-          {q.text || <span className="text-faint">(ohne Text)</span>}
-        </h3>
-        <p className="mt-0.5 text-xs text-muted-foreground">{TYPE_META[q.type](q)}</p>
-      </header>
+  const failed = n === 1 && rows[0].s.status === "done" && !!rows[0].s.run.error;
 
-      {n === 1 ? (
-        <SingleBody q={q} labels={labels} row={rows[0]} loading={loading} />
-      ) : (
-        <div className="space-y-4">
-          {q.type === "choice" ? (
-            <ChoiceMatrix labels={labels} cols={cols} />
-          ) : (
-            <div>
-              <div className="grid gap-x-3 pb-2" style={{ gridTemplateColumns: gridTemplate(n) }}>
-                <span />
-                {rows.map((r) => (
-                  <span
-                    key={r.id}
-                    className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground"
-                  >
-                    <Dot color={r.color} />
-                    <span className="truncate">{r.name}</span>
-                  </span>
-                ))}
+  return (
+    <Panel
+      aria-labelledby={`h-${q.id}`}
+      head={
+        <PanelTitle id={`h-${q.id}`} meta={TYPE_META[q.type](q)}>
+          {total > 1 && <span className="mr-2 font-normal text-faint tabular-nums">{index + 1}</span>}
+          {q.text || <span className="text-faint">(ohne Text)</span>}
+        </PanelTitle>
+      }
+      foot={!loading && !failed && <Details rows={rows} />}
+    >
+      <div className="px-4 py-4">
+        {n === 1 ? (
+          <SingleBody q={q} labels={labels} row={rows[0]} loading={loading} />
+        ) : (
+          <div className="space-y-4">
+            {q.type === "choice" ? (
+              <ChoiceMatrix labels={labels} cols={cols} />
+            ) : (
+              <div>
+                <div className="grid gap-x-3 pb-2" style={{ gridTemplateColumns: gridTemplate(n) }}>
+                  <span />
+                  {rows.map((r) => (
+                    <span
+                      key={r.id}
+                      className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground"
+                    >
+                      <Dot color={r.color} />
+                      <span className="truncate">{r.name}</span>
+                    </span>
+                  ))}
+                </div>
+                <div className="grid gap-x-3" style={{ gridTemplateColumns: gridTemplate(n) }}>
+                  <span className="text-muted-foreground">{q.type === "noul" ? "P(wahr)" : "Verteilung"}</span>
+                  {rows.map((r) => (
+                    <div key={r.id} className="min-w-0">
+                      {r.s.status === "running" ? (
+                        <Loading />
+                      ) : r.s.status === "done" && r.s.run.error ? (
+                        <span className="text-destructive">Fehler</span>
+                      ) : r.a ? (
+                        q.type === "noul" ? (
+                          <NoulScale pTrue={r.a.probs[0]} color={r.color} />
+                        ) : (
+                          <ScoreChart probs={r.a.probs} color={r.color} low={q.scoreLow} high={q.scoreHigh} />
+                        )
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="grid gap-x-3" style={{ gridTemplateColumns: gridTemplate(n) }}>
-                <span className="text-muted-foreground">{q.type === "noul" ? "P(wahr)" : "Verteilung"}</span>
-                {rows.map((r) => (
-                  <div key={r.id} className="min-w-0">
-                    {r.s.status === "running" ? (
-                      <Loading />
-                    ) : r.s.status === "done" && r.s.run.error ? (
-                      <span className="text-destructive">Fehler</span>
-                    ) : r.a ? (
-                      q.type === "noul" ? (
-                        <NoulScale pTrue={r.a.probs[0]} color={r.color} />
-                      ) : (
-                        <ScoreChart probs={r.a.probs} color={r.color} low={q.scoreLow} high={q.scoreHigh} />
-                      )
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          <StatRows q={q} labels={labels} rows={rows} />
-          {!loading && <Details rows={rows} />}
-        </div>
-      )}
-    </article>
+            )}
+            <StatRows q={q} labels={labels} rows={rows} />
+          </div>
+        )}
+      </div>
+    </Panel>
   );
 }
 
@@ -439,8 +461,6 @@ function SingleBody({ q, labels, row, loading }: { q: Question; labels: string[]
       )}
       {q.type === "noul" && <NoulScale pTrue={a.probs[0]} color={row.color} />}
       {q.type === "score" && <ScoreChart probs={a.probs} color={row.color} low={q.scoreLow} high={q.scoreHigh} />}
-
-      <Details rows={[row]} />
     </div>
   );
 }
@@ -450,7 +470,7 @@ function Stat({ label, children, big }: { label: string; children: ReactNode; bi
     <div>
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd
-        className={`tabular-nums ${big ? "text-xl leading-tight font-semibold tracking-tight" : "text-[15px] leading-tight font-medium"}`}
+        className={`mt-0.5 tabular-nums ${big ? "text-xl leading-tight font-semibold tracking-tight" : "text-sm leading-tight font-medium"}`}
       >
         {children}
       </dd>
@@ -466,7 +486,7 @@ function Details({ rows }: { rows: Row[] }) {
         <ChevronRight aria-hidden className="transition-transform group-data-[panel-open]:rotate-90" />
         Kennzahlen im Detail
       </CollapsibleTrigger>
-      <CollapsibleContent className="mt-1 text-xs">
+      <CollapsibleContent className="mt-1 pb-2 text-xs">
         <div role="table" aria-label="Weitere Kennzahlen">
           <GridRow n={n} label="p_max">
             {rows.map((r) => (
@@ -513,8 +533,7 @@ function SingleMeta({ id, state, onInspect }: { id: ModelId; state: ModelState; 
   if (state.status !== "done" || state.run.error) return null;
   return (
     <>
-      <Separator className="mt-6" />
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 pt-3 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 px-1 text-xs text-muted-foreground">
         <span className="tabular-nums">{fmtNum(state.run.latencyMs / 1000, 1)} s</span>
         <span className="tabular-nums">
           {fmtInt(state.run.tokensIn)} Tokens ein, {fmtInt(state.run.tokensOut)} aus

@@ -12,9 +12,14 @@ import { AppSidebar } from "./app-sidebar";
 import { InputPanel, validate, type Invalid } from "./input-panel";
 import { Inspector } from "./inspector";
 import { OutputPanel } from "./output-panel";
+import { ResizeHandle, useStoredSize } from "./resize-handle";
 import { Toolbar } from "./toolbar";
 
 const FIRST = PRESETS[0];
+
+/** Spaltenbreiten in px. CSS begrenzt zusätzlich: Verlauf höchstens 28 vw, Ergebnis mindestens 420 px. */
+const SIDEBAR = { initial: 240, min: 200, max: 380 };
+const INPUT = { initial: 420, min: 320, max: 760 };
 
 type Timers = { current: ReturnType<typeof setTimeout>[] };
 
@@ -24,6 +29,13 @@ function clearTimers(timers: Timers) {
 }
 
 export function Playground() {
+  const [sidebarWidth, setSidebarWidth] = useStoredSize(
+    "playground.sidebar",
+    SIDEBAR.initial,
+    SIDEBAR.min,
+    SIDEBAR.max,
+  );
+  const [inputWidth, setInputWidth] = useStoredSize("playground.input", INPUT.initial, INPUT.min, INPUT.max);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [inspectModel, setInspectModel] = useState<ModelId>(DEFAULT_MODEL);
 
@@ -177,7 +189,10 @@ export function Playground() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <SidebarProvider className="h-svh min-h-0" style={{ "--sidebar-width": "15rem" } as React.CSSProperties}>
+      <SidebarProvider
+        className="h-svh min-h-0"
+        style={{ "--sidebar-width": `min(${sidebarWidth}px, 28vw)` } as React.CSSProperties}
+      >
         <AppSidebar
           history={history}
           activeId={activeId}
@@ -185,10 +200,14 @@ export function Playground() {
           onNew={newRun}
           onDelete={deleteHistory}
           onExport={exportHistory}
+          width={sidebarWidth}
+          widthRange={SIDEBAR}
+          onWidth={setSidebarWidth}
         />
 
         <SidebarInset className="min-w-0 overflow-y-auto lg:flex-row lg:overflow-hidden">
           <InputPanel
+            width={inputWidth}
             title={title}
             mode={mode}
             onMode={changeMode}
@@ -206,6 +225,16 @@ export function Playground() {
             running={running}
             invalid={invalid}
             onRun={run}
+          />
+          <ResizeHandle
+            label="Breite der Eingabe"
+            value={inputWidth}
+            min={INPUT.min}
+            max={INPUT.max}
+            onChange={setInputWidth}
+            onReset={() => setInputWidth(INPUT.initial)}
+            measure={(h) => h.previousElementSibling?.getBoundingClientRect().width}
+            className="relative -mx-1 hidden shrink-0 lg:block"
           />
           <OutputPanel
             questions={questions}

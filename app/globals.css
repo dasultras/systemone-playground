@@ -4,13 +4,18 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* shadcn-Tokens mit den Werten des Playgrounds. Farbe heißt Daten: Chrome bleibt monochrom. */
+/*
+ * shadcn-Tokens mit den Werten des Playgrounds. Farbe heißt Daten: Chrome bleibt monochrom.
+ * Trennung entsteht über Flächen: canvas (Grund) → card (Gruppe) → strip (Kopf/Fuß einer Gruppe).
+ */
 :root {
   --radius: 0.5rem;
   --background: #ffffff;
   --foreground: #0f1115;
+  --canvas: #f3f4f6;
   --card: #ffffff;
   --card-foreground: #0f1115;
+  --strip: #f8f9fa;
   --popover: #ffffff;
   --popover-foreground: #0f1115;
   --primary: #0f1115;
@@ -22,10 +27,10 @@
   --accent: #e7e9ec;
   --accent-foreground: #0f1115;
   --destructive: #c42b2b;
-  --border: #e6e8eb;
+  --border: #e3e5e9;
   --input: #d1d5db;
   --ring: #2f5bea;
-  --sidebar: #f6f7f8;
+  --sidebar: #fafafb;
   --sidebar-foreground: #0f1115;
   --sidebar-primary: #0f1115;
   --sidebar-primary-foreground: #ffffff;
@@ -46,8 +51,10 @@
 .dark {
   --background: #0c0d10;
   --foreground: #eceef1;
-  --card: #111216;
+  --canvas: #08090b;
+  --card: #131418;
   --card-foreground: #eceef1;
+  --strip: #17181d;
   --popover: #15161a;
   --popover-foreground: #eceef1;
   --primary: #eceef1;
@@ -59,7 +66,7 @@
   --accent: #1f2025;
   --accent-foreground: #eceef1;
   --destructive: #ff7b72;
-  --border: #24262c;
+  --border: #25272e;
   --input: #353840;
   --ring: #86a3ff;
   --sidebar: #101115;
@@ -87,6 +94,8 @@
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-canvas: var(--canvas);
+  --color-strip: var(--strip);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
@@ -189,6 +198,16 @@
     transparent 0 5px,
     color-mix(in srgb, var(--warn) 22%, transparent) 5px 6px
   );
+}
+
+/* Während eine Spalte gezogen wird: keine Breiten-Animation, kein Markieren von Text. */
+html[data-resizing] {
+  cursor: col-resize;
+  user-select: none;
+}
+html[data-resizing] * {
+  cursor: col-resize !important;
+  transition: none !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

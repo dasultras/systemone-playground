@@ -16,11 +16,11 @@ import {
   SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { modelById } from "@/lib/mock-data";
 import type { HistoryEntry } from "@/lib/types";
+import { ResizeHandle } from "./resize-handle";
 import { Dot } from "./viz";
 
 type Props = {
@@ -30,13 +30,26 @@ type Props = {
   onNew: () => void;
   onDelete: (id: string) => void;
   onExport: (kind: "json" | "csv") => void;
+  width: number;
+  widthRange: { initial: number; min: number; max: number };
+  onWidth: (w: number) => void;
 };
 
 const GROUPS: HistoryEntry["group"][] = ["Heute", "Gestern", "Diese Woche"];
 
-export function AppSidebar({ history, activeId, onSelect, onNew, onDelete, onExport }: Props) {
+export function AppSidebar({
+  history,
+  activeId,
+  onSelect,
+  onNew,
+  onDelete,
+  onExport,
+  width,
+  widthRange,
+  onWidth,
+}: Props) {
   const [query, setQuery] = useState("");
-  const { isMobile, setOpenMobile } = useSidebar();
+  const { isMobile, setOpenMobile, setOpen } = useSidebar();
   const filtered = history.filter((h) =>
     `${h.title} ${h.questions.map((q) => q.text).join(" ")}`.toLowerCase().includes(query.toLowerCase()),
   );
@@ -148,7 +161,17 @@ export function AppSidebar({ history, activeId, onSelect, onNew, onDelete, onExp
         </div>
         <p className="px-1 text-xs text-faint">Gespeichert nur in diesem Browser.</p>
       </SidebarFooter>
-      <SidebarRail />
+      <ResizeHandle
+        label="Breite des Verlaufs"
+        value={width}
+        min={widthRange.min}
+        max={widthRange.max}
+        onChange={onWidth}
+        onReset={() => onWidth(widthRange.initial)}
+        onCollapse={() => setOpen(false)}
+        measure={(h) => h.parentElement?.getBoundingClientRect().width}
+        className="absolute inset-y-0 -right-1 hidden md:block"
+      />
     </Sidebar>
   );
 }
