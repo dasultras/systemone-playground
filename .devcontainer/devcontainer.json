@@ -1,0 +1,24 @@
+{
+  "name": "System One Playground",
+  "image": "mcr.microsoft.com/devcontainers/base:2-trixie",
+  "features": {
+    "ghcr.io/devcontainers/features/node:2": { "version": "24" },
+    "ghcr.io/devcontainers/features/docker-in-docker:4": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": { "label": "web (Next.js)" }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "oxc.oxc-vscode",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  },
+  "remoteUser": "vscode"
+}

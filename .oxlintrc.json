@@ -1,0 +1,33 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "react", "nextjs", "jsx-a11y", "import"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "env": {
+    "browser": true,
+    "node": true,
+    "es2024": true
+  },
+  "ignorePatterns": ["node_modules", ".next", "out", "build", "next-env.d.ts", ".agents", ".claude"],
+  "rules": {
+    "no-console": "off",
+    "react/react-in-jsx-scope": "off",
+    "import/no-unassigned-import": "off",
+    "react/no-array-index-key": "off",
+    "jsx-a11y/prefer-tag-over-role": "off",
+    "react/memo-dependencies": "off"
+  },
+  "overrides": [
+    {
+      "files": ["components/ui/**"],
+      "rules": {
+        "jsx-a11y/label-has-associated-control": "off",
+        "react/jsx-no-constructed-context-values": "off",
+        "no-shadow": "off"
+      }
+    }
+  ]
+}

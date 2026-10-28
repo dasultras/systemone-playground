@@ -1,4 +1,4 @@
-# Decision Playground
+# System One Playground
 
 Sandbox-UI zum Testen von System-One-Modellen: TypeSafe Jev (gehostet) und lokale Modelle über Ollama, nebeneinander. Clean, im Apple-Stil.
 
@@ -9,6 +9,7 @@ Sandbox-UI zum Testen von System-One-Modellen: TypeSafe Jev (gehostet) und lokal
 - React Hook Form + Zod, TanStack Query
 - `@typesafe-ai/sdk` für beide Backends
 - Persistenz nur im Browser (`localStorage`)
+- OxLint + Prettier (Tailwind-Plugin), `npm run check` / `npm run fix`
 - Docker (`standalone`, `node:24-slim`), GitHub Actions → ghcr.io (amd64 + arm64)
 
 ## Architektur

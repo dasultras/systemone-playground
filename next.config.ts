@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Schlankes Container-Artefakt für das eigene Dockerfile.
+  output: "standalone",
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

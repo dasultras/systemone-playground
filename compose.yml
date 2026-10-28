@@ -1,0 +1,14 @@
+# Playground als Container. Ollama läuft nativ auf dem Host (GPU/Metal), daher host.docker.internal.
+#   docker compose up
+services:
+  web:
+    image: ghcr.io/dasultras/systemone-playground:latest
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      TYPESAFE_API_KEY: ${TYPESAFE_API_KEY:-}
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+    # Docker Desktop kennt host.docker.internal, unter Linux braucht es das Mapping.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

@@ -1,0 +1,58 @@
+# Dependabot — ein gruppierter PR für minor/patch, Majors einzeln (eigenes Changelog).
+# Security-Updates brauchen eine eigene Gruppe (`applies-to`).
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    ignore:
+      # TS 7 (Go-Rewrite) liefert kein `typescript/lib/typescript.js` mehr;
+      # freigeben, wenn Next die TS-7-API kennt.
+      - dependency-name: "typescript"
+        versions: [">=7"]
+      # Node-Typen folgen der Runtime (Node 24, siehe .node-version).
+      - dependency-name: "@types/node"
+        versions: [">=25"]
+    groups:
+      npm:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      npm-major:
+        patterns: ["*"]
+        update-types: ["major"]
+      npm-security:
+        applies-to: security-updates
+        patterns: ["*"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: monthly
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    ignore:
+      # Base-Image bleibt auf Node 24 (LTS).
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
+    groups:
+      docker:
+        patterns: ["*"]
+
+  - package-ecosystem: "devcontainers"
+    directory: "/"
+    schedule:
+      interval: monthly
+    groups:
+      devcontainer:
+        patterns: ["*"]

@@ -1,0 +1,10 @@
+node_modules
+.next
+out
+build
+package-lock.json
+next-env.d.ts
+*.md
+# Skills (vendored), kein handgepflegter Code
+.agents
+.claude/skills

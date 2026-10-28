@@ -1,0 +1,5 @@
+# Baut das Image lokal statt es von ghcr.io zu ziehen.
+#   docker compose -f compose.yml -f compose.dev.yml up --build
+services:
+  web:
+    build: .

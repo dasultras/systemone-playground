@@ -1,0 +1,11 @@
+# Einheitliche Zeilenenden: im Repo immer LF (passt zu .prettierrc endOfLine:lf).
+* text=auto eol=lf
+
+# Binärdateien nicht anfassen.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
