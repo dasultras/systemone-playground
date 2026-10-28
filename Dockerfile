@@ -4,7 +4,7 @@ WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # --- Dependencies (Cache-Schicht: nur Manifest + Lockfile) ---
-FROM base AS deps
+FROM base AS builder
 COPY package.json package-lock.json ./
 RUN npm ci
 
