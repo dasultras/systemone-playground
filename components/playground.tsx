@@ -1,15 +1,16 @@
 "use client";
 
+import { MotionConfig } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { download, seedHistory, toCsv, toJson } from "@/lib/history";
 import { DEFAULT_MODEL, PRESETS, newQuestion, presetById, uid } from "@/lib/mock-data";
 import { mockRun, type SimulatedError } from "@/lib/mock-run";
 import type { Fact, HistoryEntry, Mode, ModelId, ModelState, Question } from "@/lib/types";
-import { InputPanel, validate } from "./input-panel";
+import { InputPanel, validate, type Invalid } from "./input-panel";
 import { Inspector } from "./inspector";
 import { OutputPanel } from "./output-panel";
 import { Sidebar } from "./sidebar";
-import { TopBar } from "./top-bar";
+import { Toolbar } from "./toolbar";
 
 const FIRST = PRESETS[0];
 
@@ -35,17 +36,26 @@ export function Playground() {
   const [models, setModels] = useState<ModelId[]>([DEFAULT_MODEL]);
   const [average, setAverage] = useState(1);
   const [simulate, setSimulate] = useState<SimulatedError>("none");
+  const [invalid, setInvalid] = useState<Invalid | null>(null);
 
   const [states, setStates] = useState<Record<string, ModelState | undefined>>({});
   const [history, setHistory] = useState<HistoryEntry[]>(seedHistory);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [undo, setUndo] = useState<{ entry: HistoryEntry; index: number } | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearTimers = () => {
     timers.current.forEach(clearTimeout);
     timers.current = [];
   };
-  useEffect(() => clearTimers, []);
+  useEffect(
+    () => () => {
+      timers.current.forEach(clearTimeout);
+      if (undoTimer.current) clearTimeout(undoTimer.current);
+    },
+    [],
+  );
 
   const toggleTheme = () => {
     const next = !dark;
@@ -68,6 +78,7 @@ export function Playground() {
     setQuestions(p.questions);
     setStates({});
     setActiveId(null);
+    setInvalid(null);
   };
 
   const changeMode = (m: Mode) => {
@@ -85,24 +96,31 @@ export function Playground() {
     setQuestions([newQuestion("choice")]);
     setStates({});
     setActiveId(null);
+    setInvalid(null);
+    setMobileSidebar(false);
   };
 
   const run = useCallback(() => {
-    if (validate(state, questions)) return;
+    const bad = validate(state, questions);
+    setInvalid(bad);
+    if (bad) {
+      document.getElementById(bad.id)?.focus();
+      return;
+    }
     clearTimers();
     const started = Date.now();
     const snapshot = { state, facts, questions, average };
-    const lastLocal = models[models.length - 1];
+    const lastModel = models[models.length - 1];
     const results = models.map((id) => ({
       id,
-      run: mockRun({ modelId: id, ...snapshot, simulate: id === lastLocal ? simulate : "none" }),
+      run: mockRun({ modelId: id, ...snapshot, simulate: id === lastModel ? simulate : "none" }),
     }));
     setStates(Object.fromEntries(models.map((id) => [id, { status: "running", startedAt: started } as ModelState])));
     setActiveId(null);
 
     let pending = results.length;
     for (const r of results) {
-      // Mock-Latenz gerafft (ca. 1/4), damit Unterschiede zwischen Modellen spürbar bleiben.
+      // Mock-Latenz gerafft (ca. ein Viertel), die Unterschiede zwischen den Modellen bleiben sichtbar.
       const delay = Math.min(2800, Math.max(500, r.run.latencyMs / 4));
       timers.current.push(
         setTimeout(() => {
@@ -119,7 +137,6 @@ export function Playground() {
                 mode,
                 presetId,
                 ...snapshot,
-                questions: snapshot.questions,
                 models,
                 runs: results.map((x) => x.run),
               },
@@ -143,7 +160,23 @@ export function Playground() {
     setAverage(h.average);
     setStates(Object.fromEntries(h.runs.map((r) => [r.modelId, { status: "done", run: r } as ModelState])));
     setActiveId(h.id);
+    setInvalid(null);
     setMobileSidebar(false);
+  };
+
+  const deleteHistory = (id: string) => {
+    const index = history.findIndex((h) => h.id === id);
+    if (index < 0) return;
+    setUndo({ entry: history[index], index });
+    setHistory((h) => h.filter((x) => x.id !== id));
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    undoTimer.current = setTimeout(() => setUndo(null), 6000);
+  };
+
+  const undoDelete = () => {
+    if (!undo) return;
+    setHistory((h) => [...h.slice(0, undo.index), undo.entry, ...h.slice(undo.index)]);
+    setUndo(null);
   };
 
   const exportHistory = (kind: "json" | "csv") =>
@@ -160,52 +193,46 @@ export function Playground() {
   }, [run]);
 
   const activeRule = useMemo(() => (mode === "multi" ? presetById(presetId ?? "")?.rule : undefined), [mode, presetId]);
+  const title = presetById(presetId ?? "")?.title ?? "Neuer Lauf";
 
   const changeModels = (m: ModelId[]) => {
     setModels(m);
     if (!m.includes(inspectModel)) setInspectModel(m[0]);
   };
 
+  const closeInspector = useCallback(() => setInspectorOpen(false), []);
+
   return (
-    <div className="flex h-dvh overflow-hidden">
-      {mobileSidebar && (
-        <button className="fixed inset-0 z-20 bg-black/30 lg:hidden" onClick={() => setMobileSidebar(false)} aria-label="Seitenleiste schließen" />
-      )}
-      <div
-        className={`fixed inset-y-0 left-0 z-30 transition-transform lg:static lg:z-auto lg:translate-x-0 ${mobileSidebar ? "translate-x-0" : "-translate-x-full"} ${sidebarOpen ? "" : "lg:hidden"}`}
-      >
-            <Sidebar
-              history={history}
-              activeId={activeId}
-              onSelect={selectHistory}
-              onNew={newRun}
-              onDelete={(id) => setHistory((h) => h.filter((x) => x.id !== id))}
-              onExport={exportHistory}
-              onClose={() => setMobileSidebar(false)}
-            />
-      </div>
+    <MotionConfig reducedMotion="user">
+      <div className="flex h-dvh overflow-hidden">
+        {mobileSidebar && (
+          <button className="fixed inset-0 z-20 bg-black/40 lg:hidden" onClick={() => setMobileSidebar(false)} aria-label="Verlauf schließen" />
+        )}
+        <div
+          className={`fixed inset-y-0 left-0 z-30 transition-transform lg:static lg:z-auto lg:translate-x-0 ${
+            mobileSidebar ? "translate-x-0" : "-translate-x-full"
+          } ${sidebarOpen ? "" : "lg:hidden"}`}
+        >
+          <Sidebar
+            history={history}
+            activeId={activeId}
+            onSelect={selectHistory}
+            onNew={newRun}
+            onDelete={deleteHistory}
+            onExport={exportHistory}
+            onClose={() => setMobileSidebar(false)}
+            undo={undo ? { title: undo.entry.title } : null}
+            onUndo={undoDelete}
+          />
+        </div>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar
-          models={models}
-          onModels={changeModels}
-          dark={dark}
-          onToggleTheme={toggleTheme}
-          onToggleSidebar={() => {
-            if (window.matchMedia("(min-width: 1024px)").matches) setSidebarOpen((o) => !o);
-            else setMobileSidebar((o) => !o);
-          }}
-          onToggleInspector={() => {
-            setInspectModel((m) => (models.includes(m) ? m : models[0]));
-            setInspectorOpen((o) => !o);
-          }}
-          inspectorOpen={inspectorOpen}
-          simulate={simulate}
-          onSimulate={setSimulate}
-        />
-
-        <main className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 lg:flex-row lg:overflow-hidden">
+        <main className="flex min-w-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
           <InputPanel
+            title={title}
+            onToggleSidebar={() => {
+              if (window.matchMedia("(min-width: 1024px)").matches) setSidebarOpen((o) => !o);
+              else setMobileSidebar((o) => !o);
+            }}
             mode={mode}
             onMode={changeMode}
             presetId={presetId}
@@ -216,9 +243,11 @@ export function Playground() {
             questions={questions}
             onQuestions={setQuestions}
             models={models}
+            onModels={changeModels}
             average={average}
             onAverage={setAverage}
             running={running}
+            invalid={invalid}
             onRun={run}
           />
           <OutputPanel
@@ -230,19 +259,32 @@ export function Playground() {
               setInspectModel(m);
               setInspectorOpen(true);
             }}
+            toolbar={
+              <Toolbar
+                dark={dark}
+                onToggleTheme={toggleTheme}
+                onToggleInspector={() => {
+                  setInspectModel((m) => (models.includes(m) ? m : models[0]));
+                  setInspectorOpen((o) => !o);
+                }}
+                inspectorOpen={inspectorOpen}
+                simulate={simulate}
+                onSimulate={setSimulate}
+              />
+            }
           />
         </main>
-      </div>
 
-      {inspectorOpen && (
-        <Inspector
-          models={models}
-          states={states}
-          modelId={models.includes(inspectModel) ? inspectModel : models[0]}
-          onModel={setInspectModel}
-          onClose={() => setInspectorOpen(false)}
-        />
-      )}
-    </div>
+        {inspectorOpen && (
+          <Inspector
+            models={models}
+            states={states}
+            modelId={models.includes(inspectModel) ? inspectModel : models[0]}
+            onModel={setInspectModel}
+            onClose={closeInspector}
+          />
+        )}
+      </div>
+    </MotionConfig>
   );
 }

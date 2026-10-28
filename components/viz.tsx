@@ -1,233 +1,173 @@
 "use client";
 
 import { motion } from "motion/react";
-import { NOUL_BAND, bimodalPeaks, expectedScore, fmtNum, fmtPct, noulVerdict } from "@/lib/metrics";
-import type { Light, Metrics } from "@/lib/types";
+import { NOUL_BAND, bimodalPeaks, expectedScore, fmtNum, fmtPct } from "@/lib/metrics";
+import type { Light } from "@/lib/types";
 
 const LIGHT = {
-  green: { label: "Belastbar", dot: "bg-ok", chip: "bg-ok-soft text-ok" },
-  yellow: { label: "Prüfen", dot: "bg-warn", chip: "bg-warn-soft text-warn" },
-  red: { label: "Unsicher", dot: "bg-bad", chip: "bg-bad-soft text-bad" },
-} satisfies Record<Light, { label: string; dot: string; chip: string }>;
+  green: { label: "Belastbar", dot: "bg-ok", text: "text-ok" },
+  yellow: { label: "Prüfen", dot: "bg-warn", text: "text-warn" },
+  red: { label: "Unsicher", dot: "bg-bad", text: "text-bad" },
+} satisfies Record<Light, { label: string; dot: string; text: string }>;
 
-export function Ampel({ light, compact }: { light: Light; compact?: boolean }) {
+export function Dot({ color, className = "" }: { color: string; className?: string }) {
+  return <span aria-hidden className={`inline-block size-2 shrink-0 rounded-full ${className}`} style={{ background: color }} />;
+}
+
+export function Verdict({ light }: { light: Light }) {
   const l = LIGHT[light];
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ${l.chip}`}>
-      <span className={`size-1.5 rounded-full ${l.dot}`} />
-      {compact ? null : l.label}
+    <span className={`inline-flex items-center gap-1.5 font-medium ${l.text}`}>
+      <span aria-hidden className={`size-1.5 rounded-full ${l.dot}`} />
+      {l.label}
     </span>
   );
 }
 
-export function MetricRow({ m }: { m: Metrics }) {
-  return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted">
-      <Ampel light={m.light} />
-      <span>
-        confidence <b className="font-mono font-medium text-ink">{fmtNum(m.confidence)}</b>
-      </span>
-      <span>
-        Margin <b className="font-mono font-medium text-ink">{fmtNum(m.margin)}</b>
-      </span>
-    </div>
-  );
-}
+export const gridTemplate = (n: number) => `minmax(6.5rem, 10rem) repeat(${n}, minmax(0, 1fr))`;
 
-const TRACK = "relative h-2 flex-1 rounded-full bg-sunken";
+const spring = { type: "spring", stiffness: 160, damping: 24 } as const;
+const tint = (color: string, pct: number) => `color-mix(in srgb, ${color} ${pct}%, transparent)`;
 
-function Bar({ p, top, color }: { p: number; top: boolean; color?: string }) {
-  return (
-    <motion.div
-      className="h-full rounded-full"
-      style={{ background: top ? (color ?? "var(--accent)") : "var(--faint)", opacity: top ? 1 : 0.45 }}
-      initial={{ width: 0 }}
-      animate={{ width: `${p * 100}%` }}
-      transition={{ type: "spring", stiffness: 140, damping: 22 }}
-    />
-  );
-}
+export type Col = {
+  key: string;
+  name: string;
+  color: string;
+  probs: number[] | null;
+};
 
-/** Balken je Option mit Referenzlinie bei 1/K. */
-export function ChoiceBars({ labels, probs, color }: { labels: string[]; probs: number[]; color?: string }) {
-  const k = probs.length;
-  const top = probs.indexOf(Math.max(...probs));
+/**
+ * Optionen × Modelle. Jede Zelle ist ein Balken mit der Zahl darin,
+ * die gestrichelte Linie markiert das Zufallsniveau 1/K.
+ */
+export function ChoiceMatrix({ labels, cols }: { labels: string[]; cols: Col[] }) {
+  const k = labels.length;
+  const template = gridTemplate(cols.length);
   return (
-    <div className="space-y-2">
-      {labels.map((l, i) => (
-        <div key={i} className="flex items-center gap-3">
-          <span className={`w-36 shrink-0 truncate text-sm ${i === top ? "font-medium text-ink" : "text-muted"}`} title={l}>
-            {l}
-          </span>
-          <div className={TRACK}>
-            <Bar p={probs[i]} top={i === top} color={color} />
-            <span className="absolute -top-1 bottom-[-4px] w-px border-l border-dashed border-ink/40" style={{ left: `${(100 / k)}%` }} />
-          </div>
-          <span className={`w-14 shrink-0 text-right font-mono text-xs ${i === top ? "text-ink" : "text-muted"}`}>
-            {fmtPct(probs[i])}
-          </span>
-        </div>
-      ))}
-      <p className="pl-[9.75rem] text-[11px] text-faint">┆ Zufallsniveau 1/K = {fmtPct(1 / k)}</p>
-    </div>
-  );
-}
-
-/** Vergleich: Zeilen = Optionen, Spalten = Modelle. */
-export function ChoiceCompare({
-  labels,
-  cols,
-}: {
-  labels: string[];
-  cols: { key: string; name: string; color: string; probs: number[] | null }[];
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-3">
-        <span className="w-36 shrink-0" />
-        <div className="grid flex-1 gap-3" style={{ gridTemplateColumns: `repeat(${cols.length}, minmax(0,1fr))` }}>
+    <div role="table" aria-label="Wahrscheinlichkeit je Option und Modell">
+      {cols.length > 1 && (
+        <div role="row" className="grid items-end gap-x-3 pb-2" style={{ gridTemplateColumns: template }}>
+          <span role="columnheader"><span className="sr-only">Option</span></span>
           {cols.map((c) => (
-            <span key={c.key} className="flex items-center gap-1.5 truncate text-[11px] font-medium text-muted">
-              <span className="size-2 rounded-full" style={{ background: c.color }} />
-              {c.name}
+            <span key={c.key} role="columnheader" className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted">
+              <Dot color={c.color} />
+              <span className="truncate">{c.name}</span>
             </span>
           ))}
         </div>
-      </div>
+      )}
       {labels.map((l, i) => (
-        <div key={i} className="flex items-center gap-3">
-          <span className="w-36 shrink-0 truncate text-sm text-muted" title={l}>
+        <div key={i} role="row" className="grid items-center gap-x-3 border-t border-line py-[3px]" style={{ gridTemplateColumns: template }}>
+          <span role="rowheader" className="truncate pr-2 text-[13px] text-muted" title={l}>
             {l}
           </span>
-          <div className="grid flex-1 gap-3" style={{ gridTemplateColumns: `repeat(${cols.length}, minmax(0,1fr))` }}>
-            {cols.map((c) => {
-              if (!c.probs) return <span key={c.key} className="text-xs text-faint">—</span>;
-              const top = c.probs.indexOf(Math.max(...c.probs)) === i;
-              return (
-                <div key={c.key} className="flex items-center gap-2">
-                  <div className={TRACK}>
-                    <Bar p={c.probs[i]} top={top} color={c.color} />
-                    <span className="absolute -top-0.5 bottom-[-2px] w-px border-l border-dashed border-ink/30" style={{ left: `${100 / c.probs.length}%` }} />
-                  </div>
-                  <span className={`w-12 shrink-0 text-right font-mono text-[11px] ${top ? "text-ink" : "text-muted"}`}>
-                    {fmtPct(c.probs[i], 0)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+          {cols.map((c) => {
+            if (!c.probs) return <span key={c.key} role="cell" className="px-2 text-faint">–</span>;
+            const top = c.probs.indexOf(Math.max(...c.probs)) === i;
+            return (
+              <div key={c.key} role="cell" className="relative h-6 overflow-hidden rounded-[3px]">
+                <motion.div
+                  className="absolute inset-y-0 left-0"
+                  style={{ background: tint(c.color, top ? 34 : 14) }}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${c.probs[i] * 100}%` }}
+                  transition={spring}
+                />
+                {top && <span aria-hidden className="absolute inset-y-0 left-0 w-[2px]" style={{ background: c.color }} />}
+                <span aria-hidden className="absolute inset-y-0 w-px border-l border-dashed border-ink/25" style={{ left: `${100 / k}%` }} />
+                <span className={`relative flex h-full items-center px-2 tabular-nums ${top ? "font-semibold text-ink" : "text-muted"}`}>
+                  {fmtPct(c.probs[i])}
+                </span>
+              </div>
+            );
+          })}
         </div>
       ))}
+      <p className="mt-2 flex items-center gap-2 text-xs text-faint">
+        <span aria-hidden className="inline-block h-3 border-l border-dashed border-ink/40" />
+        Zufallsniveau 1/K = <span className="tabular-nums">{fmtPct(1 / k)}</span>
+      </p>
     </div>
   );
 }
 
-/** P(wahr) auf einer Skala; Band 0,3–0,7 gilt als "unklar". */
-export function NoulGauge({ pTrue, color }: { pTrue: number; color?: string }) {
-  const verdict = noulVerdict(pTrue);
-  const v = {
-    yes: { label: "Ja", cls: "text-ok" },
-    no: { label: "Nein", cls: "text-ink" },
-    unclear: { label: "Unklar", cls: "text-warn" },
-  }[verdict];
+/** P(wahr) auf einer Skala, die Zone 0,3–0,7 gilt als „unklar“. */
+export function NoulScale({ pTrue, color }: { pTrue: number; color: string }) {
+  const [lo, hi] = NOUL_BAND;
+  const ticks: [number, string][] = [[0, "0"], [lo, "0,3"], [hi, "0,7"], [1, "1"]];
   return (
-    <div>
-      <div className="mb-2 flex items-baseline justify-between">
-        <span className={`text-lg font-semibold tracking-tight ${v.cls}`}>{v.label}</span>
-        <span className="font-mono text-xs text-muted">
-          P(wahr) <b className="font-medium text-ink">{fmtPct(pTrue)}</b>
-        </span>
-      </div>
-      <div className="relative h-8">
-        <div className="absolute inset-x-0 top-3 h-2 rounded-full bg-sunken" />
-        <div
-          className="absolute top-3 h-2 bg-warn/25"
-          style={{ left: `${NOUL_BAND[0] * 100}%`, width: `${(NOUL_BAND[1] - NOUL_BAND[0]) * 100}%` }}
-        />
+    <div role="img" aria-label={`P(wahr) ${fmtPct(pTrue)}, Zone unklar zwischen 0,3 und 0,7`}>
+      <div className="relative h-5">
+        <div className="absolute inset-x-0 top-2 h-1.5 overflow-hidden rounded-full bg-sunken-2">
+          <div className="hatch absolute inset-y-0 bg-warn-soft" style={{ left: `${lo * 100}%`, width: `${(hi - lo) * 100}%` }} />
+        </div>
         <motion.div
-          className="absolute top-1.5 size-5 -translate-x-1/2 rounded-full border-[3px] border-panel shadow-md"
-          style={{ background: color ?? "var(--accent)" }}
+          className="absolute top-0 h-5 w-[3px] -translate-x-1/2 rounded-full"
+          style={{ background: color }}
           initial={{ left: "50%" }}
           animate={{ left: `${pTrue * 100}%` }}
-          transition={{ type: "spring", stiffness: 140, damping: 20 }}
+          transition={spring}
         />
       </div>
-      <div className="relative mt-0.5 h-4 font-mono text-[10px] text-faint">
-        <span className="absolute left-0">0 Nein</span>
-        <span className="absolute -translate-x-1/2" style={{ left: "50%" }}>
-          unklar 0,3–0,7
-        </span>
-        <span className="absolute right-0">Ja 1</span>
+      <div className="relative h-4 text-[11px] tabular-nums text-faint">
+        {ticks.map(([v, t]) => (
+          <span
+            key={t}
+            className={`absolute ${v === 0 ? "" : v === 1 ? "-translate-x-full" : "-translate-x-1/2"}`}
+            style={{ left: `${v * 100}%` }}
+          >
+            {t}
+          </span>
+        ))}
+      </div>
+      <div className="relative h-4 text-[11px] text-faint">
+        <span className="absolute left-0">Nein</span>
+        <span className="absolute -translate-x-1/2 text-warn" style={{ left: `${((lo + hi) / 2) * 100}%` }}>unklar</span>
+        <span className="absolute right-0">Ja</span>
       </div>
     </div>
   );
 }
 
-/** Volle Verteilung über die Level, Erwartungswert als Marke, Hinweis bei zwei Gipfeln. */
-export function ScoreHistogram({
-  probs,
-  low,
-  high,
-  color,
-  compact,
-}: {
-  probs: number[];
-  low: string;
-  high: string;
-  color?: string;
-  compact?: boolean;
-}) {
+/** Verteilung über die Level, Erwartungswert als gestrichelte Linie. */
+export function ScoreChart({ probs, color, low, high }: { probs: number[]; color: string; low: string; high: string }) {
   const n = probs.length;
-  const max = Math.max(...probs);
-  const mode = probs.indexOf(max);
+  const max = Math.max(...probs) || 1;
+  const mode = probs.indexOf(Math.max(...probs));
   const e = expectedScore(probs);
   const peaks = bimodalPeaks(probs);
-  const h = compact ? 64 : 104;
+  const H = 72;
   return (
     <div>
-      <div className="mb-2 flex items-baseline justify-between">
-        <span className="text-lg font-semibold tracking-tight">
-          Modus {mode + 1}
-          <span className="ml-2 text-sm font-normal text-muted">
-            Erwartung <b className="font-mono font-medium text-ink">{fmtNum(e)}</b>
-          </span>
-        </span>
+      <div role="img" aria-label={`Verteilung über ${n} Level, Modus ${mode + 1}, Erwartungswert ${fmtNum(e)}`} className="relative">
+        <div className="flex items-end gap-1" style={{ height: H + 16 }}>
+          {probs.map((p, i) => (
+            <div key={i} className="flex h-full flex-1 flex-col items-center justify-end">
+              <span className={`mb-0.5 text-[11px] tabular-nums ${i === mode ? "font-semibold text-ink" : "text-faint"}`}>{fmtPct(p, 0)}</span>
+              <motion.div
+                className="w-full rounded-t-[3px]"
+                style={{ background: i === mode ? color : tint(color, 28) }}
+                initial={{ height: 0 }}
+                animate={{ height: Math.max(2, (p / max) * H) }}
+                transition={spring}
+              />
+            </div>
+          ))}
+        </div>
+        <div aria-hidden className="pointer-events-none absolute inset-y-0 border-l border-dashed border-ink/50" style={{ left: `${((e - 0.5) / n) * 100}%` }} />
       </div>
-      <div className="flex items-end gap-1.5" style={{ height: h }}>
-        {probs.map((p, i) => (
-          <div key={i} className="flex h-full flex-1 flex-col items-center justify-end">
-            <span className="mb-1 font-mono text-[10px] text-muted">{fmtPct(p, 0)}</span>
-            <motion.div
-              className="w-full rounded-t-md"
-              style={{ background: i === mode ? (color ?? "var(--accent)") : "var(--faint)", opacity: i === mode ? 1 : 0.4 }}
-              initial={{ height: 0 }}
-              animate={{ height: Math.max(3, (p / (max || 1)) * (h - 18)) }}
-              transition={{ type: "spring", stiffness: 140, damping: 22 }}
-            />
-          </div>
-        ))}
-      </div>
-      <div className="relative mt-1 h-3 border-t border-line">
-        <span
-          className="absolute -top-[3px] size-1.5 -translate-x-1/2 rotate-45 bg-ink"
-          style={{ left: `${((e - 1 + 0.5) / n) * 100}%` }}
-          title={`Erwartungswert ${fmtNum(e)}`}
-        />
-      </div>
-      <div className="flex gap-1.5">
+      <div className="flex gap-1 border-t border-line pt-1 text-[11px] tabular-nums text-muted">
         {probs.map((_, i) => (
-          <span key={i} className="flex-1 text-center font-mono text-[11px] text-muted">
-            {i + 1}
-          </span>
+          <span key={i} className="flex-1 text-center">{i + 1}</span>
         ))}
       </div>
-      <div className="mt-1 flex justify-between text-[11px] text-faint">
+      <div className="mt-0.5 flex justify-between text-[11px] text-faint">
         <span>1 = {low}</span>
         <span>{n} = {high}</span>
       </div>
       {peaks && (
-        <p className="mt-2 rounded-lg bg-warn-soft px-3 py-2 text-xs text-warn">
-          Zwei Gipfel (Level {peaks[0]} und {peaks[1]}): Das Modell ist uneins, der Erwartungswert ist hier irreführend.
+        <p className="mt-2 rounded-md bg-warn-soft px-2.5 py-1.5 text-xs text-warn">
+          Zwei Gipfel bei Level {peaks[0]} und {peaks[1]}. Der Erwartungswert ist hier irreführend.
         </p>
       )}
     </div>
