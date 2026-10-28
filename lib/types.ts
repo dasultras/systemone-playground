@@ -67,7 +67,7 @@ export type Answer = {
 };
 
 export type RunError = {
-  kind: "timeout" | "overflow" | "network";
+  kind: "timeout" | "overflow" | "network" | "api";
   message: string;
 };
 

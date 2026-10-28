@@ -88,7 +88,7 @@ export function Inspector({ open, onOpenChange, models, states, modelId, onModel
         </Tabs>
 
         <SheetFooter className="border-t px-5 py-3 text-xs text-muted-foreground">
-          Das Schema im Mock ist illustrativ. Im echten Betrieb enthalten Logs nur Metadaten, nie den State.
+          Gesendet und empfangen wie gezeigt. Server-Logs enthalten nur Metadaten, nie den State.
         </SheetFooter>
       </SheetContent>
     </Sheet>

@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { download, seedHistory, toCsv, toJson } from "@/lib/history";
 import { DEFAULT_MODEL, PRESETS, newQuestion, presetById, uid } from "@/lib/mock-data";
-import { mockRun, type SimulatedError } from "@/lib/mock-run";
+import { postRun } from "@/lib/run";
 import type { Fact, HistoryEntry, Mode, ModelId, ModelState, Question } from "@/lib/types";
 import { AppSidebar } from "./app-sidebar";
 import { InputPanel, validate, type Invalid } from "./input-panel";
@@ -20,13 +20,6 @@ const FIRST = PRESETS[0];
 /** Spaltenbreiten in px. CSS begrenzt zusätzlich: Verlauf höchstens 28 vw, Ergebnis mindestens 420 px. */
 const SIDEBAR = { initial: 240, min: 200, max: 380 };
 const INPUT = { initial: 420, min: 320, max: 760 };
-
-type Timers = { current: ReturnType<typeof setTimeout>[] };
-
-function clearTimers(timers: Timers) {
-  timers.current.forEach(clearTimeout);
-  timers.current = [];
-}
 
 export function Playground() {
   const [sidebarWidth, setSidebarWidth] = useStoredSize(
@@ -46,20 +39,19 @@ export function Playground() {
   const [questions, setQuestions] = useState<Question[]>(FIRST.questions);
   const [models, setModels] = useState<ModelId[]>([DEFAULT_MODEL]);
   const [average, setAverage] = useState(1);
-  const [simulate, setSimulate] = useState<SimulatedError>("none");
   const [invalid, setInvalid] = useState<Invalid | null>(null);
 
   const [states, setStates] = useState<Record<string, ModelState | undefined>>({});
   const [history, setHistory] = useState<HistoryEntry[]>(seedHistory);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const abort = useRef<AbortController | null>(null);
 
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  useEffect(() => () => abort.current?.abort(), []);
 
   const running = models.some((m) => states[m]?.status === "running");
 
   const reset = () => {
-    clearTimers(timers);
+    abort.current?.abort();
     setStates({});
     setActiveId(null);
     setInvalid(null);
@@ -91,54 +83,49 @@ export function Playground() {
     setQuestions([newQuestion("choice")]);
   };
 
-  const run = useCallback(() => {
+  const run = useCallback(async () => {
     const bad = validate(state, questions);
     setInvalid(bad);
     if (bad) {
       document.getElementById(bad.id)?.focus();
       return;
     }
-    clearTimers(timers);
+    abort.current?.abort();
+    const ctrl = (abort.current = new AbortController());
+    // Leere Optionen fallen weg, damit Anzeige und Request dieselben Labels haben.
+    const sent = questions.map((q) => ({ ...q, options: q.options.filter((o) => o.trim()) }));
+    setQuestions(sent);
+    const snapshot = { state, facts, questions: sent, average };
     const started = Date.now();
-    const snapshot = { state, facts, questions, average };
-    const lastModel = models[models.length - 1];
-    const results = models.map((id) => ({
-      id,
-      run: mockRun({ modelId: id, ...snapshot, simulate: id === lastModel ? simulate : "none" }),
-    }));
     setStates(Object.fromEntries(models.map((id) => [id, { status: "running", startedAt: started } as ModelState])));
     setActiveId(null);
 
-    let pending = results.length;
-    for (const r of results) {
-      // Mock-Latenz gerafft (ca. ein Viertel), die Unterschiede zwischen den Modellen bleiben sichtbar.
-      const delay = Math.min(2800, Math.max(500, r.run.latencyMs / 4));
-      timers.current.push(
-        setTimeout(() => {
-          setStates((s) => ({ ...s, [r.id]: { status: "done", run: r.run } }));
-          if (--pending === 0) {
-            const first = questions[0].text;
-            const id = uid("h");
-            setHistory((h) => [
-              {
-                id,
-                title: presetById(presetId ?? "")?.title ?? (first.length > 36 ? `${first.slice(0, 36)}…` : first),
-                time: new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
-                group: "Heute",
-                mode,
-                presetId,
-                ...snapshot,
-                models,
-                runs: results.map((x) => x.run),
-              },
-              ...h,
-            ]);
-            setActiveId(id);
-          }
-        }, delay),
-      );
-    }
-  }, [state, facts, questions, average, models, simulate, presetId, mode]);
+    const runs = await Promise.all(
+      models.map(async (modelId) => {
+        const r = await postRun({ modelId, ...snapshot }, ctrl.signal);
+        if (!ctrl.signal.aborted) setStates((s) => ({ ...s, [modelId]: { status: "done", run: r } }));
+        return r;
+      }),
+    );
+    if (ctrl.signal.aborted) return;
+    const first = sent[0].text;
+    const id = uid("h");
+    setHistory((h) => [
+      {
+        id,
+        title: presetById(presetId ?? "")?.title ?? (first.length > 36 ? `${first.slice(0, 36)}…` : first),
+        time: new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
+        group: "Heute",
+        mode,
+        presetId,
+        ...snapshot,
+        models,
+        runs,
+      },
+      ...h,
+    ]);
+    setActiveId(id);
+  }, [state, facts, questions, average, models, presetId, mode]);
 
   const selectHistory = (h: HistoryEntry) => {
     reset();
@@ -252,8 +239,6 @@ export function Playground() {
                   setInspectorOpen((o) => !o);
                 }}
                 inspectorOpen={inspectorOpen}
-                simulate={simulate}
-                onSimulate={setSimulate}
               />
             }
           />

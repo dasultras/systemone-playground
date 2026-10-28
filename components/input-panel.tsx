@@ -280,7 +280,7 @@ export function InputPanel(p: Props) {
               <Kbd>⌘</Kbd>
               <Kbd>↵</Kbd>
             </KbdGroup>
-            führt aus. Mock: keine echten Modellaufrufe.
+            führt aus.
           </p>
         )}
       </footer>
