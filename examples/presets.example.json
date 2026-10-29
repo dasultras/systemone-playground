@@ -1,0 +1,60 @@
+[
+  {
+    "id": "support-anfrage",
+    "title": "Support-Anfrage",
+    "mode": "single",
+    "state": "Kundin schreibt: „Mir wurde das Monatsabo diesen Monat zweimal abgebucht. Bitte erstatten Sie eine der beiden Zahlungen.“",
+    "questions": [
+      {
+        "id": "q1",
+        "text": "Welches Team sollte die Anfrage bearbeiten?",
+        "type": "choice",
+        "options": ["Abrechnung", "Technik", "Vertrieb", "Sonstiges"]
+      }
+    ]
+  },
+  {
+    "id": "rezension",
+    "title": "Rezension",
+    "mode": "single",
+    "state": "Rezension: „Der Wasserkocher ist leise, kocht schnell und sieht gut aus. Nach zwei Wochen täglicher Nutzung bin ich sehr zufrieden.“",
+    "questions": [{ "id": "q1", "text": "Ist die Rezension positiv?", "type": "noul" }]
+  },
+  {
+    "id": "dringlichkeit",
+    "title": "Dringlichkeit",
+    "mode": "single",
+    "state": "Nachricht: „Mein Termin morgen früh wurde abgesagt. Ich brauche bis dahin einen Ersatztermin, sonst verfällt meine Buchung.“",
+    "facts": [{ "key": "stunden_bis_termin", "value": "14" }],
+    "questions": [
+      {
+        "id": "q1",
+        "text": "Wie dringend muss die Nachricht beantwortet werden?",
+        "type": "score",
+        "levels": 5,
+        "scoreLow": "kann warten",
+        "scoreHigh": "sofort"
+      }
+    ]
+  },
+  {
+    "id": "picknick",
+    "title": "Picknick möglich?",
+    "mode": "multi",
+    "state": "Wetterbericht für Samstagnachmittag: überwiegend sonnig, leichter Wind aus West. Der Stadtpark ist laut Aushang von 7 bis 21 Uhr geöffnet.",
+    "facts": [
+      { "key": "temperatur_c", "value": "19" },
+      { "key": "regen_prozent", "value": "10" }
+    ],
+    "questions": [
+      { "id": "q1", "text": "Regnet es voraussichtlich?", "type": "noul" },
+      { "id": "q2", "text": "Ist es kälter als 12 °C?", "type": "noul" },
+      { "id": "q3", "text": "Ist der Park geschlossen?", "type": "noul" }
+    ],
+    "rule": {
+      "label": "Picknick möglich",
+      "yes": "Alle drei Antworten „Nein“ → Picknick möglich",
+      "no": "Mindestens eine Antwort „Ja“ → verschieben"
+    }
+  }
+]

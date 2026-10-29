@@ -10,8 +10,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { fmtInt } from "@/lib/limits";
-import { labelsFor, modelById } from "@/lib/mock-data";
 import { expectedScore, fmtNum, fmtPct, noulVerdict } from "@/lib/metrics";
+import { modelById } from "@/lib/models";
+import { labelsFor } from "@/lib/questions";
 import type { Answer, ModelId, ModelRun, ModelState, Preset, Question, RunError } from "@/lib/types";
 import { Panel } from "./group";
 import { ChoiceMatrix, Dot, NoulScale, ScoreChart, Verdict, gridTemplate, type Col } from "./viz";
@@ -23,6 +24,8 @@ type Props = {
   models: ModelId[];
   states: States;
   rule?: Preset["rule"];
+  /** Ob das Vorlagen-Menü sichtbar ist (ab zwei Vorlagen). */
+  canLoadPreset: boolean;
   onInspect: (m: ModelId) => void;
   onRetry: (m: ModelId) => void;
   toolbar: ReactNode;
@@ -65,7 +68,7 @@ function answerText(q: Question, labels: string[], a: Answer): string {
   return `Level ${a.metrics.topIndex + 1}`;
 }
 
-export function OutputPanel({ questions, models, states, rule, onInspect, onRetry, toolbar }: Props) {
+export function OutputPanel({ questions, models, states, rule, canLoadPreset, onInspect, onRetry, toolbar }: Props) {
   const list = models.map((id) => stateOf(states, id));
   const anyActive = list.some((s) => s.status !== "idle");
   const running = list.some((s) => s.status === "running");
@@ -113,7 +116,7 @@ export function OutputPanel({ questions, models, states, rule, onInspect, onRetr
           <div className="max-w-sm">
             <h3 className="text-[15px] font-semibold">Noch kein Ergebnis</h3>
             <p className="mt-1 text-muted-foreground">
-              Wähle eine Vorlage oder gib State und Frage ein. „Ausführen“
+              Gib State und Frage ein{canLoadPreset && " oder lade eine Vorlage"}. „Ausführen“
               <span className="pointer-coarse:hidden"> oder ⌘&nbsp;↵</span> startet den Lauf.
             </p>
           </div>
@@ -249,7 +252,7 @@ function RuleBlock({
       }
       foot={
         <p className="py-0.5 text-xs text-muted-foreground">
-          {rule.yes}. {rule.no}. Unklare Antworten (0,3 bis 0,7) lösen nie eine Löschung aus.
+          {rule.yes}. {rule.no}. Unklare Antworten (0,3 bis 0,7) ergeben nie „{rule.label}“.
         </p>
       }
     >
@@ -267,7 +270,7 @@ function RuleBlock({
           }
           const view = {
             yes: { t: rule.label, c: "text-ok" },
-            no: { t: "Behalten", c: "text-foreground" },
+            no: { t: "Nicht erfüllt", c: "text-foreground" },
             unclear: { t: "Manuell prüfen", c: "text-warn" },
             pending: { t: "…", c: "text-faint" },
             error: { t: "Kein Ergebnis", c: "text-destructive" },

@@ -14,7 +14,8 @@ import {
   type TypeSafeClientConfig,
 } from "@typesafe-ai/sdk";
 import { computeMetrics } from "./metrics";
-import { labelsFor, modelById } from "./mock-data";
+import { modelById } from "./models";
+import { labelsFor } from "./questions";
 import { errorRun, type RunRequest } from "./run";
 import type { ModelInfo, ModelRun, Question, RunError } from "./types";
 

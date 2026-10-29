@@ -1,6 +1,7 @@
 "use client";
 
-import { Loader2, Play, Plus, Trash2, TriangleAlert } from "lucide-react";
+import { LayoutTemplate, Loader2, Play, Plus, Trash2, TriangleAlert } from "lucide-react";
+import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,11 +9,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { estimateTokens, fmtInt, fullStateText } from "@/lib/limits";
-import { MODELS, PRESETS, newQuestion } from "@/lib/mock-data";
-import type { Fact, Mode, ModelId, Question, QuestionType } from "@/lib/types";
+import { MODELS } from "@/lib/models";
+import { newQuestion } from "@/lib/questions";
+import type { Fact, Mode, ModelId, Preset, Question, QuestionType } from "@/lib/types";
 import { Group, GroupRow } from "./group";
 import { OptionsEditor } from "./options-editor";
 import { Segmented } from "./segmented";
@@ -44,10 +48,11 @@ type Props = {
   /** Wunschbreite ab lg; CSS hält sie zwischen 320 px und „Rest minus 420 px“. */
   width: number;
   title: string;
+  onTitle: (t: string) => void;
+  presets: Preset[];
+  onPreset: (id: string) => void;
   mode: Mode;
   onMode: (m: Mode) => void;
-  presetId: string | null;
-  onPreset: (id: string) => void;
   state: string;
   onState: (s: string) => void;
   facts: Fact[];
@@ -85,7 +90,16 @@ export function InputPanel(p: Props) {
     >
       <header className="flex h-11 shrink-0 items-center gap-2 border-b bg-background px-3">
         <SidebarTrigger aria-label="Verlauf ein- oder ausblenden" className="text-muted-foreground" />
-        <h1 className="min-w-0 flex-1 truncate text-[13px] font-semibold">{p.title}</h1>
+        <Input
+          aria-label="Titel des Laufs"
+          placeholder="Neuer Lauf"
+          maxLength={80}
+          autoComplete="off"
+          value={p.title}
+          onChange={(e) => p.onTitle(e.target.value)}
+          className={`${BARE} h-7 min-w-0 flex-1 truncate rounded-md px-1 text-[13px] font-semibold hover:bg-muted/60 focus-visible:bg-muted/60 md:text-[13px] dark:hover:bg-muted/60 dark:focus-visible:bg-muted/60`}
+        />
+        {p.presets.length >= 2 && <PresetMenu presets={p.presets} onPreset={p.onPreset} />}
         <Segmented
           label="Modus"
           value={p.mode}
@@ -96,25 +110,6 @@ export function InputPanel(p: Props) {
           ]}
         />
       </header>
-
-      <nav
-        aria-label="Vorlagen"
-        className="flex shrink-0 flex-wrap items-center gap-0.5 border-b bg-background px-3 py-1.5"
-      >
-        <span className="mr-1 px-1 text-xs text-faint">Vorlage</span>
-        {PRESETS.filter((x) => x.mode === p.mode).map((x) => (
-          <Button
-            key={x.id}
-            variant="ghost"
-            size="sm"
-            aria-pressed={p.presetId === x.id}
-            onClick={() => p.onPreset(x.id)}
-            className="font-normal text-muted-foreground aria-pressed:bg-accent aria-pressed:font-medium aria-pressed:text-foreground"
-          >
-            {x.title}
-          </Button>
-        ))}
-      </nav>
 
       <div className="relative space-y-5 px-4 py-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain">
         <Group
@@ -143,7 +138,7 @@ export function InputPanel(p: Props) {
             autoComplete="off"
             aria-describedby="state-hint"
             aria-invalid={p.invalid?.id === "state" || undefined}
-            placeholder="z. B. Hostname, OS, installierte Programme …"
+            placeholder="z. B. eine Nachricht, ein Datensatz oder ein Textauszug …"
             className={`${BARE} min-h-32 resize-y px-3 py-2.5 font-mono text-[11.5px] leading-relaxed md:text-[11.5px]`}
           />
           {p.facts.length > 0 && (
@@ -235,7 +230,7 @@ export function InputPanel(p: Props) {
             <Alert className="mt-2 border-warn/40 bg-warn-soft text-warn">
               <TriangleAlert aria-hidden />
               <AlertDescription className="text-warn">
-                TypeSafe hostet in den USA. Nur synthetische Daten senden, keine echten Inventurdaten.
+                TypeSafe hostet in den USA. Nur synthetische Daten senden, keine echten oder personenbezogenen Daten.
               </AlertDescription>
             </Alert>
           )}
@@ -281,6 +276,55 @@ export function InputPanel(p: Props) {
         )}
       </footer>
     </section>
+  );
+}
+
+const TYPE_LABEL: Record<QuestionType, string> = { choice: "Choice", noul: "Noul", score: "Score" };
+
+/** Kompaktes Menü statt Leiste: Vorlagen sind Startpunkte, die eigene Eingabe steht im Vordergrund. */
+function PresetMenu({ presets, onPreset }: { presets: Preset[]; onPreset: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <PopoverTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Vorlage laden"
+                  className="text-muted-foreground data-popup-open:bg-accent"
+                />
+              }
+            />
+          }
+        >
+          <LayoutTemplate aria-hidden />
+        </TooltipTrigger>
+        <TooltipContent>Vorlage laden</TooltipContent>
+      </Tooltip>
+      <PopoverContent align="end" className="w-64 gap-0 p-1">
+        <p className="px-2 pt-1 pb-1.5 text-xs text-faint">Vorlage laden</p>
+        {presets.map((x) => (
+          <Button
+            key={x.id}
+            variant="ghost"
+            onClick={() => {
+              onPreset(x.id);
+              setOpen(false);
+            }}
+            className="h-auto w-full flex-col items-start justify-start gap-0 py-1.5 text-left"
+          >
+            <span className="w-full truncate text-[13px] font-medium">{x.title}</span>
+            <span className="text-xs font-normal text-muted-foreground">
+              {x.mode === "multi" ? `${x.questions.length} Fragen` : TYPE_LABEL[x.questions[0].type]}
+            </span>
+          </Button>
+        ))}
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -333,7 +377,7 @@ function QuestionEditor({
         name={id}
         value={q.text}
         onChange={(e) => onChange({ text: e.target.value })}
-        placeholder="z. B. Wird die DLL von einem Prozess geladen?"
+        placeholder="z. B. Erwähnt der Text eine Frist?"
         autoComplete="off"
         aria-invalid={invalid || undefined}
         className={`${BARE} h-10 px-3 text-[13px] font-medium md:text-[13px]`}

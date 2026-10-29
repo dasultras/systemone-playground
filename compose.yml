@@ -8,6 +8,10 @@ services:
     environment:
       TYPESAFE_API_KEY: ${TYPESAFE_API_KEY:-}
       OLLAMA_BASE_URL: http://host.docker.internal:11434
+      # PRESETS_FILE: /app/config/presets.json
+    # Eigene Vorlagen: Datei einhängen und PRESETS_FILE setzen (Standard config/presets.default.json).
+    # volumes:
+    #   - ./examples/presets.example.json:/app/config/presets.json:ro
     # Docker Desktop kennt host.docker.internal, unter Linux braucht es das Mapping.
     extra_hosts:
       - "host.docker.internal:host-gateway"

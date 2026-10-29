@@ -1,5 +1,5 @@
 import { runModel } from "@/lib/backend";
-import { modelById } from "@/lib/mock-data";
+import { modelById } from "@/lib/models";
 import { RunRequest } from "@/lib/run";
 
 // Guard: Größenlimit (Ollama nimmt höchstens 64 KiB), Rate-Limit und Tagesbudget für TypeSafe, alles im Speicher.

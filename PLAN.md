@@ -46,10 +46,10 @@ UI ── POST /api/run ──▶ Route Handler (Guard) ──▶ TypeSafeClient
 
 ## Leitplanken
 
-- **Fragen atomar stellen**, die Entscheidung trifft der Code. Also "Wird `dll` von einem Prozess geladen?" statt "Soll `dll` weg?".
-- **Fakten berechnet der Code** und legt sie in den State, z. B. `days_since_last_patch`. Die Modelle kennen das heutige Datum nicht.
+- **Fragen atomar stellen**, die Entscheidung trifft der Code. Also "Erwähnt die Nachricht eine Rückerstattung?" statt "Soll das Ticket an die Abrechnung?".
+- **Fakten berechnet der Code** und legt sie in den State, z. B. `days_since_order`. Die Modelle kennen das heutige Datum nicht.
 - **State kürzen** statt den Kontext zu vergrößern:
-  - Presets enthalten nur die relevanten Felder.
+  - Vorlagen enthalten nur die relevanten Felder.
   - `lib/limits.ts` schätzt die Tokens (Zeichen / 2,6) gegen das Modell-Limit. Lokal sind das 8k bzw. 16k Tokens, bei TypeSafe 64k.
 - **Fehler bleiben Fehler**, z. B. Timeout oder Overflow-400. Sie werden nie als Antwort angezeigt.
 - **Logs nur mit Metadaten**, ohne State-Inhalt. Next-Telemetrie aus.
@@ -59,7 +59,8 @@ UI ── POST /api/run ──▶ Route Handler (Guard) ──▶ TypeSafeClient
 
 Schritte 1–7 umgesetzt:
 
-- UI mit Presets, Vergleich mehrerer Modelle, Reihenfolge mitteln, Request-Inspektor.
+- UI mit editierbarem Titel, Vergleich mehrerer Modelle, Reihenfolge mitteln, Request-Inspektor.
+- Vorlagen als JSON-Datei (`PRESETS_FILE`, Standard `config/presets.default.json`), geprüft per Zod-Schema; Menü „Vorlage laden“ erst ab zwei Vorlagen.
 - Historie in `localStorage` (höchstens 50 Läufe), Export als JSON/CSV.
 - Fehlerzustände je Modell mit Wiederholen, Dark Mode (System/Hell/Dunkel), Mobile, dezente Animationen.
 - `/api/run`, `/api/health`, Docker, CI nach GHCR.
@@ -71,6 +72,6 @@ Schritte 1–7 umgesetzt:
 
 ## Offen
 
-- Eval-Items sind zu leicht: elephant liegt auf dem Test-Split bei 98,5 % Accuracy, AURC ≈ 0,001. Schwere Varianten verraten die Antwort (geladene Prozesse, Nachbardateien, exakte Tage). Sie müssen härter werden, danach ist ein neuer Lauf nötig.
+- Eval-Items sind zu leicht: elephant liegt auf dem Test-Split bei 98,5 % Accuracy, AURC ≈ 0,001. Schwere Varianten verraten die Antwort über eindeutige Hinweise im State. Sie müssen härter werden, danach ist ein neuer Lauf nötig.
 - Eval-Läufe: elephant gemittelt ×3 ist erst zu 50 von 120 States fertig. clef-flash steht noch aus, der Vergleich mit Jev ebenfalls (nur mit Freigabe).
 - Latenzen für die Arbeit in Ruhe messen: ein Modell geladen, State pro Lauf variieren (clef-flash cached identische Requests).

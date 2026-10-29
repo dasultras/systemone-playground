@@ -31,7 +31,6 @@ export type Preset = {
   id: string;
   title: string;
   mode: Mode;
-  badge: string;
   state: string;
   facts: Fact[];
   questions: Question[];

@@ -20,7 +20,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { NO_HISTORY, groupOf, timeLabel } from "@/lib/history";
-import { modelById } from "@/lib/mock-data";
+import { modelById } from "@/lib/models";
 import type { HistoryEntry, HistoryGroup } from "@/lib/types";
 import { ResizeHandle } from "./resize-handle";
 import { Dot } from "./viz";

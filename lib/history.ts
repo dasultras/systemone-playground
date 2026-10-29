@@ -1,4 +1,5 @@
-import { MODELS, labelsFor } from "./mock-data.ts";
+import { MODELS } from "./models.ts";
+import { labelsFor } from "./questions.ts";
 import type { HistoryEntry, HistoryGroup } from "./types";
 
 export const HISTORY_KEY = "playground.history";

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MODELS } from "./mock-data";
+import { MODELS } from "./models";
 import type { ModelId, ModelRun, RunError } from "./types";
 
 const Text = z.string().trim().min(1);

@@ -25,6 +25,15 @@ npm run dev
 Es gibt einen [Dev Container](.devcontainer/devcontainer.json) (Node 24, docker-in-docker, gh), in VS Code
 „Reopen in Container".
 
+## Vorlagen
+
+Vorlagen liegen als JSON-Datei vor, ein Zod-Schema in [`lib/presets.ts`](lib/presets.ts) prüft sie beim Laden. Der
+Server liest die Datei aus `PRESETS_FILE` (Standard [`config/presets.default.json`](config/presets.default.json) mit
+einer einzigen Vorlage). Ist sie fehlerhaft oder fehlt sie, gilt der Standard. Ab zwei Vorlagen zeigt die Eingabe das
+Menü „Vorlage laden“. [`examples/presets.example.json`](examples/presets.example.json) zeigt alle Fragetypen und ein
+Bündel mit Regel, z. B. mit `PRESETS_FILE=examples/presets.example.json` in `.env`. Im Container hängt `compose.yml`
+die Datei per Volume ein (dort auskommentiert).
+
 ## Evaluation
 
 `npm run eval -- --limit 2` ist ein Smoke-Lauf, `npm run eval` der volle Lauf (600 synthetische Items, lokal roh und

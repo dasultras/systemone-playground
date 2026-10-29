@@ -1,0 +1,9 @@
+[
+  {
+    "id": "himmel",
+    "title": "Himmel",
+    "mode": "single",
+    "state": "Der Himmel ist heute wolkenlos.",
+    "questions": [{ "id": "q1", "text": "Ist der Himmel blau?", "type": "noul" }]
+  }
+]

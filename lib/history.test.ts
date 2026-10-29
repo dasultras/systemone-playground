@@ -31,6 +31,9 @@ test("parseHistory übersteht Unlesbares", () => {
   const noAverage = { ...ok, id: "h6", average: undefined };
   const raw = [ok, { ...ok, id: "h2", at: "gestern" }, { id: "h3", at: 1, runs: [{}] }, gone, partial, noAverage, null];
   assert.deepEqual(parseHistory(JSON.stringify(raw)), [ok]);
+  // Vorlagen kommen aus einer Datei; entfernte Vorlagen dürfen alte Einträge nicht verwerfen.
+  const oldPreset = { ...ok, id: "h7", presetId: "alte-vorlage" };
+  assert.deepEqual(parseHistory(JSON.stringify([oldPreset])), [oldPreset]);
 });
 
 const q = (id: string, text: string) => ({

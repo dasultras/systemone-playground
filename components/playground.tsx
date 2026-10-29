@@ -1,13 +1,14 @@
 "use client";
 
 import { MotionConfig } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { NO_HISTORY, download, readHistory, subscribeHistory, toCsv, toJson, writeHistory } from "@/lib/history";
-import { DEFAULT_MODEL, PRESETS, newQuestion, presetById, uid } from "@/lib/mock-data";
+import { DEFAULT_MODEL } from "@/lib/models";
+import { newQuestion, uid } from "@/lib/questions";
 import { postRun, type RunRequest } from "@/lib/run";
-import type { Fact, HistoryEntry, Mode, ModelId, ModelState, Question } from "@/lib/types";
+import type { Fact, HistoryEntry, Mode, ModelId, ModelState, Preset, Question } from "@/lib/types";
 import { AppSidebar } from "./app-sidebar";
 import { InputPanel, validate, type Invalid } from "./input-panel";
 import { Inspector } from "./inspector";
@@ -15,13 +16,12 @@ import { OutputPanel } from "./output-panel";
 import { ResizeHandle, useStoredSize } from "./resize-handle";
 import { Toolbar } from "./toolbar";
 
-const FIRST = PRESETS[0];
-
 /** Spaltenbreiten in px. CSS begrenzt zusätzlich: Verlauf höchstens 28 vw, Ergebnis mindestens 420 px. */
 const SIDEBAR = { initial: 240, min: 200, max: 380 };
 const INPUT = { initial: 420, min: 320, max: 760 };
 
-export function Playground() {
+/** `presets` kommt vom Server und enthält mindestens eine Vorlage. */
+export function Playground({ presets }: { presets: Preset[] }) {
   const [sidebarWidth, setSidebarWidth] = useStoredSize(
     "playground.sidebar",
     SIDEBAR.initial,
@@ -32,11 +32,13 @@ export function Playground() {
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [inspectModel, setInspectModel] = useState<ModelId>(DEFAULT_MODEL);
 
-  const [mode, setMode] = useState<Mode>(FIRST.mode);
-  const [presetId, setPresetId] = useState<string | null>(FIRST.id);
-  const [state, setState] = useState(FIRST.state);
-  const [facts, setFacts] = useState<Fact[]>(FIRST.facts);
-  const [questions, setQuestions] = useState<Question[]>(FIRST.questions);
+  const first = presets[0];
+  const [title, setTitle] = useState(first.title);
+  const [mode, setMode] = useState<Mode>(first.mode);
+  const [presetId, setPresetId] = useState<string | null>(first.id);
+  const [state, setState] = useState(first.state);
+  const [facts, setFacts] = useState<Fact[]>(first.facts);
+  const [questions, setQuestions] = useState<Question[]>(first.questions);
   const [models, setModels] = useState<ModelId[]>([DEFAULT_MODEL]);
   const [average, setAverage] = useState(1);
   const [invalid, setInvalid] = useState<Invalid | null>(null);
@@ -68,6 +70,7 @@ export function Playground() {
     };
   }, []);
 
+  const preset = presets.find((x) => x.id === presetId);
   const running = models.some((m) => states[m]?.status === "running");
 
   const reset = () => {
@@ -77,10 +80,12 @@ export function Playground() {
     setInvalid(null);
   };
 
+  // Eine Vorlage setzt nur den Anfangstitel; danach gehört er dem Nutzer.
   const loadPreset = (id: string) => {
-    const p = presetById(id);
+    const p = presets.find((x) => x.id === id);
     if (!p) return;
     reset();
+    setTitle(p.title);
     setPresetId(id);
     setMode(p.mode);
     setState(p.state);
@@ -90,12 +95,17 @@ export function Playground() {
 
   const changeMode = (m: Mode) => {
     if (m === mode) return;
-    const first = PRESETS.find((p) => p.mode === m);
-    if (first) loadPreset(first.id);
+    reset();
+    setMode(m);
+    // Die Fragen passen danach nicht mehr zur Vorlage, also gilt auch ihre Regel nicht mehr.
+    setPresetId(null);
+    // Einzelfrage behält nur die erste Frage.
+    if (m === "single") setQuestions((qs) => qs.slice(0, 1));
   };
 
   const newRun = () => {
     reset();
+    setTitle("");
     setPresetId(null);
     setMode("single");
     setState("");
@@ -134,12 +144,12 @@ export function Playground() {
       }),
     );
     if (ctrl.signal.aborted) return;
-    const first = sent[0].text;
+    const q1 = sent[0].text;
     const id = uid("h");
     writeHistory([
       {
         id,
-        title: presetById(presetId ?? "")?.title ?? (first.length > 36 ? `${first.slice(0, 36)}…` : first),
+        title: title.trim() || (q1.length > 36 ? `${q1.slice(0, 36)}…` : q1),
         at: Date.now(),
         mode,
         presetId,
@@ -150,7 +160,7 @@ export function Playground() {
       ...readHistory(),
     ]);
     setActiveId(id);
-  }, [state, facts, questions, average, models, presetId, mode]);
+  }, [state, facts, questions, average, models, presetId, mode, title]);
 
   /** Wiederholt nur ein Modell mit demselben Request und ersetzt dessen Lauf im aktiven Verlaufseintrag. */
   const retry = async (modelId: ModelId) => {
@@ -172,6 +182,7 @@ export function Playground() {
 
   const selectHistory = (h: HistoryEntry) => {
     reset();
+    setTitle(h.title);
     setPresetId(h.presetId);
     setMode(h.mode);
     setState(h.state);
@@ -218,8 +229,7 @@ export function Playground() {
     return () => window.removeEventListener("keydown", h);
   }, [run]);
 
-  const activeRule = useMemo(() => (mode === "multi" ? presetById(presetId ?? "")?.rule : undefined), [mode, presetId]);
-  const title = presetById(presetId ?? "")?.title ?? "Neuer Lauf";
+  const activeRule = mode === "multi" ? preset?.rule : undefined;
 
   const changeModels = (m: ModelId[]) => {
     setModels(m);
@@ -248,10 +258,11 @@ export function Playground() {
           <InputPanel
             width={inputWidth}
             title={title}
+            onTitle={setTitle}
+            presets={presets}
+            onPreset={loadPreset}
             mode={mode}
             onMode={changeMode}
-            presetId={presetId}
-            onPreset={loadPreset}
             state={state}
             onState={setState}
             facts={facts}
@@ -280,6 +291,7 @@ export function Playground() {
             models={models}
             states={states}
             rule={activeRule}
+            canLoadPreset={presets.length >= 2}
             onInspect={(m) => {
               setInspectModel(m);
               setInspectorOpen(true);

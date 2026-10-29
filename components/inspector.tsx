@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { modelById } from "@/lib/mock-data";
+import { modelById } from "@/lib/models";
 import type { ModelId, ModelState } from "@/lib/types";
 import { Segmented } from "./segmented";
 
