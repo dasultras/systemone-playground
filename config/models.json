@@ -1,0 +1,14 @@
+[
+  {
+    "name": "hf.co/waseigo/elephant-1-decision-GGUF:latest",
+    "label": "elephant-1",
+    "sizeGb": 6.3,
+    "description": "9B, Q4_K_M, kompakt und schnell"
+  },
+  {
+    "name": "clef-flash:latest",
+    "label": "clef-flash",
+    "sizeGb": 12.4,
+    "description": "MLX, mxfp8, Ollama-Bibliothek"
+  }
+]

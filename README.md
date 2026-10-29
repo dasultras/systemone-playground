@@ -55,6 +55,11 @@ listet die Modelle mit Präfix (`ollama:`, `vllm:`, `typesafe:`), 30 s gecacht, 
 - **[vLLM](https://docs.vllm.ai/en/latest/models/structured_decisions_models/#example)** (`localhost:8000`): Start mit
   `--logprobs-mode raw_logprobs`, max. 64 Fragen pro Request, unbekannte Felder geben 400.
 
+Bekannte System-One-Modelle stehen in [`config/models.json`](config/models.json) (Pull-Referenz, Label, Größe). Was davon
+in Ollama fehlt, zeigt die Modellwahl unter „Bekannt, nicht installiert“. Mit `ALLOW_PULL=1` lädt ein Button das Modell
+über `POST /api/models/pull` (Fortschritt als NDJSON), sonst steht dort der Befehl `ollama pull <name>` zum Kopieren.
+Pullen belegt Plattenplatz auf dem Host.
+
 ## Docker
 
 ```bash

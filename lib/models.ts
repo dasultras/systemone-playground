@@ -1,4 +1,4 @@
-import type { Backend, ModelId, ModelInfo, ModelsResponse } from "./types";
+import type { Backend, KnownModel, ModelId, ModelInfo, ModelsResponse } from "./types";
 
 // Rein und ohne server-only: Client, Server, Tests und Eval nutzen dieselben Helfer.
 
@@ -88,6 +88,18 @@ export function pickDefault(models: ModelInfo[], env?: string): ModelId | null {
   const wanted = env ? legacyModelId(env) : null;
   if (wanted && models.some((m) => m.id === wanted)) return wanted;
   return (models.find((m) => m.backend === "ollama") ?? models[0])?.id ?? null;
+}
+
+/** Referenz vergleichbar machen: Ollama ignoriert Groß-/Kleinschreibung und ergänzt fehlende Tags zu `:latest`. */
+export function normRef(ref: string): string {
+  const r = ref.toLowerCase();
+  return r.slice(r.lastIndexOf("/") + 1).includes(":") ? r : `${r}:latest`;
+}
+
+/** Bekannte Modelle ohne die installierten; `installed` enthält Namen und `parent_model` der Tags. */
+export function mergeKnown(known: KnownModel[], installed: string[]): KnownModel[] {
+  const have = new Set(installed.map(normRef));
+  return known.filter((k) => !have.has(normRef(k.name)));
 }
 
 export async function fetchModels(refresh = false): Promise<ModelsResponse> {

@@ -29,11 +29,24 @@ export type ModelInfo = {
   color: string;
 };
 
-/** Antwort von `GET /api/models`: verfügbare Modelle und nicht erreichbare Backends. */
+/** Bekanntes System-One-Modell aus `config/models.json`; `name` ist die Pull-Referenz für Ollama. */
+export type KnownModel = {
+  name: string;
+  label: string;
+  /** Ungefähre Downloadgröße in GB. */
+  sizeGb: number;
+  description: string;
+};
+
+/** Antwort von `GET /api/models`: verfügbare Modelle, nicht erreichbare Backends und bekannte, nicht installierte Modelle. */
 export type ModelsResponse = {
   models: ModelInfo[];
   defaultModel: ModelId | null;
   errors: { backend: Backend; message: string }[];
+  /** Nur Ollama-Modelle, die noch nicht installiert sind; fehlt im Fallback, wenn die Liste nicht lädt. */
+  known?: KnownModel[];
+  /** Pullen aus der UI erlaubt (`ALLOW_PULL=1` und Ollama aktiv). */
+  pull?: boolean;
 };
 
 export type Fact = { key: string; value: string };

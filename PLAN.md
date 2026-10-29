@@ -29,6 +29,8 @@ UI ── GET /api/models ──▶ Registry (30-s-Cache) ──▶ Ollama /api/
 - **Modelle frei wählbar:** IDs tragen das Backend als Präfix, z. B. `ollama:elephant-1:9b-q4-ctx8k`, `vllm:<name>`, `typesafe:jev-latest`.
   - `GET /api/models` listet je aktivem Backend (Ollama standardmäßig, leeres `OLLAMA_BASE_URL` schaltet es ab; vLLM/TypeSafe nur mit Env): Ollama nur mit Capability `decision` (Limit aus `num_ctx`, sonst `*.context_length`), vLLM mit `max_model_len`, TypeSafe statisch und nur mit Key (kein API-Aufruf).
   - Nicht erreichbare Backends stehen in `errors`, die Route scheitert nie. Cache 30 s, `?refresh` lädt neu.
+  - Bekannte Modelle aus `config/models.json`, die Ollama nicht hat (Name oder `parent_model`), stehen in `known` („Bekannt, nicht installiert“).
+  - `POST /api/models/pull` leitet an Ollama `/api/pull` weiter und streamt den Fortschritt; nur mit `ALLOW_PULL=1`, sonst 403 und der Befehl `ollama pull` zum Kopieren.
   - `/api/run` prüft die ID gegen diese Liste. Standard: `DEFAULT_MODEL`, sonst das erste Ollama-Modell.
   - Verlaufseinträge mit entfernten Modellen laden weiter; alte IDs ohne Präfix gelten als Ollama (`jev-latest` als TypeSafe).
 - Den Key liest nur Server-Code (`server-only`), er bekommt nie das Präfix `NEXT_PUBLIC_`.

@@ -1,6 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { fromOllama, fromVllm, legacyModelId, modelColor, modelMeta, parseModelId, pickDefault } from "./models.ts";
+import {
+  fromOllama,
+  fromVllm,
+  legacyModelId,
+  mergeKnown,
+  modelColor,
+  modelMeta,
+  normRef,
+  parseModelId,
+  pickDefault,
+} from "./models.ts";
 
 test("parseModelId: nur bekannte Präfixe, Namen mit Doppelpunkten", () => {
   assert.deepEqual(parseModelId("ollama:elephant-1:9b-q4-ctx8k"), {
@@ -82,4 +92,25 @@ test("pickDefault: Env, sonst erstes Ollama-Modell", () => {
   assert.equal(pickDefault(models), "ollama:a");
   assert.equal(pickDefault([modelMeta("vllm:v")]), "vllm:v");
   assert.equal(pickDefault([]), null);
+});
+
+test("normRef: Kleinschreibung, fehlendes Tag wird :latest", () => {
+  assert.equal(normRef("Clef-Flash"), "clef-flash:latest");
+  assert.equal(normRef("hf.co/Org/Modell-GGUF"), "hf.co/org/modell-gguf:latest");
+  assert.equal(normRef("elephant-1:9b-q4-ctx8k"), "elephant-1:9b-q4-ctx8k");
+  assert.equal(normRef("host:5000/org/m"), "host:5000/org/m:latest");
+});
+
+const k = (name: string) => ({ name, label: name, sizeGb: 1, description: "" });
+
+test("mergeKnown: parent_model verdeckt, :latest und Groß-/Kleinschreibung egal", () => {
+  const known = [k("hf.co/waseigo/elephant-1-decision-GGUF:latest"), k("clef-flash:latest"), k("neu")];
+  // Kopie mit eigenem Namen, das Original steckt nur in parent_model (Tag ohne :latest, andere Schreibweise).
+  const installed = ["elephant-1:9b-q4-ctx8k", "hf.co/waseigo/elephant-1-decision-gguf", "CLEF-FLASH"];
+  assert.deepEqual(
+    mergeKnown(known, installed).map((m) => m.name),
+    ["neu"],
+  );
+  assert.equal(mergeKnown(known, []).length, 3);
+  assert.deepEqual(mergeKnown([], installed), []);
 });
