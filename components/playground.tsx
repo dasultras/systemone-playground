@@ -5,10 +5,10 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import { toast } from "sonner";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { NO_HISTORY, download, readHistory, subscribeHistory, toCsv, toJson, writeHistory } from "@/lib/history";
-import { DEFAULT_MODEL } from "@/lib/models";
+import { fetchModels } from "@/lib/models";
 import { newQuestion, uid } from "@/lib/questions";
 import { postRun, type RunRequest } from "@/lib/run";
-import type { Fact, HistoryEntry, Mode, ModelId, ModelState, Preset, Question } from "@/lib/types";
+import type { Fact, HistoryEntry, Mode, ModelId, ModelState, ModelsResponse, Preset, Question } from "@/lib/types";
 import { AppSidebar } from "./app-sidebar";
 import { InputPanel, validate, type Invalid } from "./input-panel";
 import { Inspector } from "./inspector";
@@ -30,7 +30,7 @@ export function Playground({ presets }: { presets: Preset[] }) {
   );
   const [inputWidth, setInputWidth] = useStoredSize("playground.input", INPUT.initial, INPUT.min, INPUT.max);
   const [inspectorOpen, setInspectorOpen] = useState(false);
-  const [inspectModel, setInspectModel] = useState<ModelId>(DEFAULT_MODEL);
+  const [inspectModel, setInspectModel] = useState<ModelId | null>(null);
 
   const first = presets[0];
   const [title, setTitle] = useState(first.title);
@@ -39,7 +39,8 @@ export function Playground({ presets }: { presets: Preset[] }) {
   const [state, setState] = useState(first.state);
   const [facts, setFacts] = useState<Fact[]>(first.facts);
   const [questions, setQuestions] = useState<Question[]>(first.questions);
-  const [models, setModels] = useState<ModelId[]>([DEFAULT_MODEL]);
+  const [models, setModels] = useState<ModelId[]>([]);
+  const [catalog, setCatalog] = useState<ModelsResponse | null>(null);
   const [average, setAverage] = useState(1);
   const [invalid, setInvalid] = useState<Invalid | null>(null);
 
@@ -69,6 +70,26 @@ export function Playground({ presets }: { presets: Preset[] }) {
       window.removeEventListener("pageshow", restore);
     };
   }, []);
+
+  // Modelle einmal laden, danach nur über „Modelle neu laden“; die erste Auswahl ist das Standardmodell.
+  const loadModels = useCallback(
+    (refresh = false) =>
+      fetchModels(refresh).then(
+        (c) => {
+          setCatalog(c);
+          setModels((m) => (m.length ? m : c.defaultModel ? [c.defaultModel] : []));
+        },
+        () => {
+          toast("Modelle konnten nicht geladen werden.");
+          setCatalog({ models: [], defaultModel: null, errors: [] });
+        },
+      ),
+    [],
+  );
+
+  useEffect(() => {
+    loadModels();
+  }, [loadModels]);
 
   const preset = presets.find((x) => x.id === presetId);
   const running = models.some((m) => states[m]?.status === "running");
@@ -114,6 +135,7 @@ export function Playground({ presets }: { presets: Preset[] }) {
   };
 
   const run = useCallback(async () => {
+    if (!models.length) return;
     const bad = validate(state, questions);
     setInvalid(bad);
     if (bad) {
@@ -233,7 +255,7 @@ export function Playground({ presets }: { presets: Preset[] }) {
 
   const changeModels = (m: ModelId[]) => {
     setModels(m);
-    if (!m.includes(inspectModel)) setInspectModel(m[0]);
+    if (!inspectModel || !m.includes(inspectModel)) setInspectModel(m[0] ?? null);
   };
 
   return (
@@ -268,6 +290,8 @@ export function Playground({ presets }: { presets: Preset[] }) {
             facts={facts}
             questions={questions}
             onQuestions={setQuestions}
+            catalog={catalog}
+            onRefreshModels={() => loadModels(true)}
             models={models}
             onModels={changeModels}
             average={average}
@@ -300,7 +324,7 @@ export function Playground({ presets }: { presets: Preset[] }) {
             toolbar={
               <Toolbar
                 onToggleInspector={() => {
-                  setInspectModel((m) => (models.includes(m) ? m : models[0]));
+                  setInspectModel((m) => (m && models.includes(m) ? m : (models[0] ?? null)));
                   setInspectorOpen((o) => !o);
                 }}
                 inspectorOpen={inspectorOpen}
@@ -314,7 +338,7 @@ export function Playground({ presets }: { presets: Preset[] }) {
           onOpenChange={setInspectorOpen}
           models={models}
           states={states}
-          modelId={models.includes(inspectModel) ? inspectModel : models[0]}
+          modelId={inspectModel && models.includes(inspectModel) ? inspectModel : models[0]}
           onModel={setInspectModel}
         />
       </SidebarProvider>

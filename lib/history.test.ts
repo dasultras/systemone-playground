@@ -25,15 +25,55 @@ test("parseHistory übersteht Unlesbares", () => {
   assert.deepEqual(parseHistory("{"), []);
   assert.deepEqual(parseHistory("{}"), []);
   const base = { title: "t", at: 1, mode: "single", presetId: null, state: "", average: 1, facts: [], questions: [] };
-  const ok = { ...base, id: "h1", models: ["clef-flash"], runs: [{ modelId: "clef-flash", answers: [] }] };
-  const gone = { ...ok, id: "h4", models: ["gibts-nicht"], runs: [{ modelId: "gibts-nicht", answers: [] }] };
-  const partial = { ...ok, id: "h5", runs: [{ modelId: "clef-flash" }] };
+  const ok = {
+    ...base,
+    id: "h1",
+    models: ["ollama:clef-flash"],
+    runs: [{ modelId: "ollama:clef-flash", answers: [] }],
+  };
+  const gone = {
+    ...ok,
+    id: "h4",
+    models: ["ollama:gibts-nicht"],
+    runs: [{ modelId: "ollama:gibts-nicht", answers: [] }],
+  };
+  const partial = { ...ok, id: "h5", runs: [{ modelId: "ollama:clef-flash" }] };
   const noAverage = { ...ok, id: "h6", average: undefined };
-  const raw = [ok, { ...ok, id: "h2", at: "gestern" }, { id: "h3", at: 1, runs: [{}] }, gone, partial, noAverage, null];
-  assert.deepEqual(parseHistory(JSON.stringify(raw)), [ok]);
+  const noId = { ...ok, id: "h8", runs: [{ modelId: 3, answers: [] }] };
+  const raw = [
+    ok,
+    { ...ok, id: "h2", at: "gestern" },
+    { id: "h3", at: 1, runs: [{}] },
+    gone,
+    partial,
+    noAverage,
+    noId,
+    null,
+  ];
+  // Nicht mehr verfügbare Modelle laden trotzdem; die Anzeige leitet Name und Farbe aus der ID ab.
+  assert.deepEqual(parseHistory(JSON.stringify(raw)), [ok, gone]);
   // Vorlagen kommen aus einer Datei; entfernte Vorlagen dürfen alte Einträge nicht verwerfen.
   const oldPreset = { ...ok, id: "h7", presetId: "alte-vorlage" };
   assert.deepEqual(parseHistory(JSON.stringify([oldPreset])), [oldPreset]);
+});
+
+test("parseHistory ergänzt Präfixe alter IDs", () => {
+  const base = { title: "t", at: 1, mode: "multi", presetId: null, state: "", average: 1, facts: [], questions: [] };
+  const old = {
+    ...base,
+    id: "h1",
+    models: ["clef-flash", "jev-latest"],
+    runs: [
+      { modelId: "clef-flash", answers: [] },
+      { modelId: "jev-latest", answers: [] },
+    ],
+  };
+  const [e] = parseHistory(JSON.stringify([old]));
+  assert.deepEqual(e.models, ["ollama:clef-flash", "typesafe:jev-latest"]);
+  assert.deepEqual(
+    e.runs.map((r) => r.modelId),
+    ["ollama:clef-flash", "typesafe:jev-latest"],
+  );
 });
 
 const q = (id: string, text: string) => ({
@@ -45,7 +85,7 @@ const q = (id: string, text: string) => ({
   scoreLow: "",
   scoreHigh: "",
 });
-const run = (modelId: "clef-flash" | "elephant-1:9b-q4-ctx8k") => ({
+const run = (modelId: string) => ({
   modelId,
   answers: [],
   latencyMs: 1,
@@ -66,9 +106,9 @@ test("CSV maskiert Anführungszeichen, Kommas und Zeilenumbrüche", () => {
     state: "",
     facts: [],
     questions: [q("q1", 'Sagt er "ja", oder\nnein?'), q("q2", "zwei")],
-    models: ["clef-flash", "elephant-1:9b-q4-ctx8k"],
+    models: ["ollama:clef-flash", "ollama:elephant-1:9b-q4-ctx8k"],
     average: 1,
-    runs: [run("clef-flash"), run("elephant-1:9b-q4-ctx8k")],
+    runs: [run("ollama:clef-flash"), run("ollama:elephant-1:9b-q4-ctx8k")],
   } satisfies HistoryEntry;
   const csv = toCsv([entry]);
   assert.ok(csv.startsWith('"run","zeitpunkt","modell"'));

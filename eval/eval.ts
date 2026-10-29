@@ -12,6 +12,7 @@ import {
   scale,
   type Pred,
 } from "../lib/calibration.ts";
+import { legacyModelId } from "../lib/models.ts";
 import type { RunRequest } from "../lib/run.ts";
 import type { ModelRun, QuestionType } from "../lib/types.ts";
 import { generate, items, type Item } from "./items.ts";
@@ -23,7 +24,7 @@ import { generate, items, type Item } from "./items.ts";
 const { values: args } = parseArgs({
   options: {
     "base-url": { type: "string", default: "http://localhost:3100" },
-    models: { type: "string", default: "elephant-1:9b-q4-ctx8k" },
+    models: { type: "string", default: "ollama:elephant-1:9b-q4-ctx8k" },
     average: { type: "string", default: "1,3" },
     limit: { type: "string" },
     seed: { type: "string", default: "42" },
@@ -31,11 +32,14 @@ const { values: args } = parseArgs({
   },
 });
 
-const models = args.models.split(",").map((m) => m.trim()) as RunRequest["modelId"][];
+// IDs ohne Präfix wie in der UI auf ihr Backend abbilden (`jev-latest` → `typesafe:jev-latest`).
+const models = args.models.split(",").map((m) => legacyModelId(m.trim()));
 const averages = args.average.split(",").map(Number);
 const seed = Number(args.seed);
-if (models.includes("jev-latest") && process.env.EVAL_ALLOW_TYPESAFE !== "1") {
-  console.error("jev-latest geht an TypeSafe (US-Hosting): nur mit EVAL_ALLOW_TYPESAFE=1 und synthetischen Daten.");
+if (models.some((m) => m.startsWith("typesafe:")) && process.env.EVAL_ALLOW_TYPESAFE !== "1") {
+  console.error(
+    "typesafe:-Modelle gehen an TypeSafe (US-Hosting): nur mit EVAL_ALLOW_TYPESAFE=1 und synthetischen Daten.",
+  );
   process.exit(1);
 }
 
@@ -100,7 +104,8 @@ const cached = (records: Raw[]) =>
   new Map(records.flatMap((r) => r.answers.filter((a) => a.hash).map((a) => [a.hash, a.probs] as const)));
 
 async function run(modelId: RunRequest["modelId"], average: number) {
-  const file = `${RAW}/${`${modelId}__avg${average}`.toLowerCase().replace(/[^a-z0-9.-]/g, "_")}.jsonl`;
+  // Ohne `ollama:`, damit Rohdaten aus der Zeit vor den Präfixen weiter passen.
+  const file = `${RAW}/${`${modelId.replace(/^ollama:/, "")}__avg${average}`.toLowerCase().replace(/[^a-z0-9.-]/g, "_")}.jsonl`;
   const done = cached(load(file));
   for (const [i, s] of states.entries()) {
     const tag = `[${modelId} ×${average}] ${i + 1}/${states.length} ${s.id}`;

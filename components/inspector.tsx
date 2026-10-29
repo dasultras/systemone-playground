@@ -5,8 +5,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { modelById } from "@/lib/models";
-import type { ModelId, ModelState } from "@/lib/types";
+import { modelMeta } from "@/lib/models";
+import type { Backend, ModelId, ModelState } from "@/lib/types";
 import { Segmented } from "./segmented";
 
 type Props = {
@@ -14,15 +14,22 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   models: ModelId[];
   states: Record<string, ModelState | undefined>;
-  modelId: ModelId;
+  /** Fehlt, wenn kein Modell ausgewählt ist. */
+  modelId?: ModelId;
   onModel: (m: ModelId) => void;
+};
+
+const ENDPOINT: Record<Backend, string> = {
+  typesafe: "api.typesafe.ai",
+  ollama: "OLLAMA_BASE_URL/v1/systemone",
+  vllm: "VLLM_BASE_URL/v1/systemone",
 };
 
 export function Inspector({ open, onOpenChange, models, states, modelId, onModel }: Props) {
   const [copied, setCopied] = useState<string | null>(null);
-  const s = states[modelId];
+  const s = modelId ? states[modelId] : undefined;
   const run = s?.status === "done" ? s.run : null;
-  const m = modelById(modelId);
+  const m = modelId ? modelMeta(modelId) : null;
 
   const copy = async (key: string, json: string) => {
     try {
@@ -40,18 +47,20 @@ export function Inspector({ open, onOpenChange, models, states, modelId, onModel
         <SheetHeader className="border-b px-5 py-4">
           <SheetTitle className="text-[13px] font-semibold">Request-Inspektor</SheetTitle>
           <SheetDescription className="font-mono text-[11px]">
-            {m.backend === "typesafe" ? "api.typesafe.ai" : "OLLAMA_BASE_URL/v1/systemone"}
+            {m ? ENDPOINT[m.backend] : "Kein Modell ausgewählt"}
           </SheetDescription>
         </SheetHeader>
 
         <Tabs defaultValue="request" className="min-h-0 flex-1 gap-3 px-5 py-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <Segmented
-              label="Modell"
-              value={modelId}
-              onChange={onModel}
-              options={models.map((id) => ({ value: id, label: modelById(id).label }))}
-            />
+            {modelId && (
+              <Segmented
+                label="Modell"
+                value={modelId}
+                onChange={onModel}
+                options={models.map((id) => ({ value: id, label: modelMeta(id).label }))}
+              />
+            )}
             <TabsList>
               <TabsTrigger value="request">Request</TabsTrigger>
               <TabsTrigger value="response">Response</TabsTrigger>

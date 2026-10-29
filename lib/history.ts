@@ -1,4 +1,4 @@
-import { MODELS } from "./models.ts";
+import { legacyModelId } from "./models.ts";
 import { labelsFor } from "./questions.ts";
 import type { HistoryEntry, HistoryGroup } from "./types";
 
@@ -28,8 +28,6 @@ export function timeLabel(at: number, now = Date.now()): string {
   return d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 }
 
-const known = (id: unknown) => MODELS.some((m) => m.id === id);
-
 /** Liest gespeicherte Einträge; Unlesbares fällt still weg. */
 export function parseHistory(raw: string | null): HistoryEntry[] {
   let data: unknown;
@@ -40,22 +38,29 @@ export function parseHistory(raw: string | null): HistoryEntry[] {
   }
   if (!Array.isArray(data)) return [];
   // Jedes Feld, das Anzeige oder Export lesen, muss passen; sonst stürzt die Auswahl ab.
-  return data.filter(
-    (e): e is HistoryEntry =>
-      typeof e === "object" &&
-      e !== null &&
-      typeof e.at === "number" &&
-      typeof e.id === "string" &&
-      typeof e.title === "string" &&
-      typeof e.state === "string" &&
-      typeof e.average === "number" &&
-      (e.mode === "single" || e.mode === "multi") &&
-      (e.presetId === null || typeof e.presetId === "string") &&
-      ["facts", "questions", "models", "runs"].every((k) => Array.isArray(e[k])) &&
-      e.runs.every((r: { answers?: unknown } | null) => Array.isArray(r?.answers)) &&
-      // Unbekannte Modelle (umbenannt oder entfernt) würden die Anzeige zum Absturz bringen.
-      [...e.models, ...e.runs.map((r: { modelId: unknown }) => r.modelId)].every(known),
-  );
+  // Nicht mehr verfügbare Modelle bleiben erhalten, die Anzeige leitet Name und Farbe aus der ID ab.
+  return data
+    .filter(
+      (e): e is HistoryEntry =>
+        typeof e === "object" &&
+        e !== null &&
+        typeof e.at === "number" &&
+        typeof e.id === "string" &&
+        typeof e.title === "string" &&
+        typeof e.state === "string" &&
+        typeof e.average === "number" &&
+        (e.mode === "single" || e.mode === "multi") &&
+        (e.presetId === null || typeof e.presetId === "string") &&
+        ["facts", "questions", "models", "runs"].every((k) => Array.isArray(e[k])) &&
+        e.runs.every((r: { answers?: unknown } | null) => Array.isArray(r?.answers)) &&
+        [...e.models, ...e.runs.map((r: { modelId: unknown }) => r.modelId)].every((id) => typeof id === "string"),
+    )
+    .map((e) => ({
+      ...e,
+      // IDs ohne Präfix stammen aus der Zeit vor der freien Modellwahl.
+      models: e.models.map(legacyModelId),
+      runs: e.runs.map((r) => ({ ...r, modelId: legacyModelId(r.modelId) })),
+    }));
 }
 
 // Verlauf liegt im Speicher und zusätzlich in localStorage, wie die Spaltenbreiten in resize-handle.tsx.

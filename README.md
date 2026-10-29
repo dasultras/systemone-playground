@@ -1,6 +1,6 @@
 # System One Playground
 
-Sandbox-UI zum Testen von System-One-Modellen: TypeSafe Jev (gehostet) und lokale Modelle über Ollama,
+Sandbox-UI zum Testen von System-One-Modellen: TypeSafe Jev (gehostet) und lokale Modelle über Ollama oder vLLM,
 nebeneinander. [MIT](LICENSE).
 
 > **TypeSafe nur mit synthetischen Daten** (US-Hosting). Lokale Modelle laufen über Ollama auf dem eigenen Rechner.
@@ -38,12 +38,17 @@ die Datei per Volume ein (dort auskommentiert).
 
 `npm run eval -- --limit 2` ist ein Smoke-Lauf, `npm run eval` der volle Lauf (600 synthetische Items, lokal roh und
 gemittelt) gegen den laufenden Server (`--base-url`, Standard `:3100`). Antworten liegen je Frage-Hash in
-`eval/out/raw/` (Resume; geänderte Fragen werden neu geholt), Bericht in `eval/out/report.md`. `jev-latest` nur mit
-`EVAL_ALLOW_TYPESAFE=1`, die Daten sind synthetisch.
+`eval/out/raw/` (Resume; geänderte Fragen werden neu geholt), Bericht in `eval/out/report.md`. Modelle über `--models`
+mit Präfix (Standard `ollama:elephant-1:9b-q4-ctx8k`), `typesafe:`-Modelle nur mit `EVAL_ALLOW_TYPESAFE=1`, die
+Daten sind synthetisch.
 
 ## Kompatible Backends
 
-Kompatibel mit jedem Server, der das System-One-Schema (`/v1/systemone`) spricht, angebunden über die Base-URL:
+Kompatibel mit jedem Server, der das System-One-Schema (`/v1/systemone`) spricht, angebunden über die Base-URL. Ollama
+ist standardmäßig aktiv (`localhost:11434`, leeres `OLLAMA_BASE_URL` schaltet es ab), vLLM und TypeSafe nur mit gesetzter
+Env (`VLLM_BASE_URL`, `TYPESAFE_API_KEY`). `GET /api/models`
+listet die Modelle mit Präfix (`ollama:`, `vllm:`, `typesafe:`), 30 s gecacht, Ollama nur mit Capability `decision`.
+`DEFAULT_MODEL` wählt das Startmodell vor.
 
 - **TypeSafe** (`api.typesafe.ai`), gehostet
 - **[Ollama](https://docs.ollama.com/api/systemone)** (`localhost:11434`), lokal

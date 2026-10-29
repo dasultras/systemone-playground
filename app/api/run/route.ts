@@ -1,5 +1,5 @@
 import { runModel } from "@/lib/backend";
-import { modelById } from "@/lib/models";
+import { findModel } from "@/lib/registry";
 import { RunRequest } from "@/lib/run";
 
 // Guard: Größenlimit (Ollama nimmt höchstens 64 KiB), Rate-Limit und Tagesbudget für TypeSafe, alles im Speicher.
@@ -31,7 +31,10 @@ export async function POST(req: Request) {
   if (recent.length >= RATE.limit) return reject(429, `Rate-Limit: höchstens ${RATE.limit} Läufe pro Minute.`);
   recent.push(now);
 
-  if (modelById(body.modelId).backend === "typesafe") {
+  const model = await findModel(body.modelId);
+  if (!model) return reject(400, `Modell nicht verfügbar: ${body.modelId}`);
+
+  if (model.backend === "typesafe") {
     const day = new Date(now).toISOString().slice(0, 10);
     if (budget.day !== day) Object.assign(budget, { day, used: 0 });
     if (budget.used >= DAILY_TYPESAFE)
@@ -39,7 +42,7 @@ export async function POST(req: Request) {
     budget.used++;
   }
 
-  const run = await runModel(body, req.signal);
+  const run = await runModel(body, model, req.signal);
   // Nur Metadaten loggen, nie den State.
   console.info(`run ${body.modelId} q=${body.questions.length} ${run.latencyMs}ms ${run.error?.kind ?? "ok"}`);
   return Response.json(run);

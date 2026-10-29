@@ -8,6 +8,8 @@ services:
     environment:
       TYPESAFE_API_KEY: ${TYPESAFE_API_KEY:-}
       OLLAMA_BASE_URL: http://host.docker.internal:11434
+      # VLLM_BASE_URL: http://host.docker.internal:8000
+      # DEFAULT_MODEL: ollama:elephant-1:9b-q4-ctx8k
       # PRESETS_FILE: /app/config/presets.json
     # Eigene Vorlagen: Datei einhängen und PRESETS_FILE setzen (Standard config/presets.default.json).
     # volumes:

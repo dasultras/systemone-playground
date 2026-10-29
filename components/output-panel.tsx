@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { fmtInt } from "@/lib/limits";
 import { expectedScore, fmtNum, fmtPct, noulVerdict } from "@/lib/metrics";
-import { modelById } from "@/lib/models";
+import { modelMeta } from "@/lib/models";
 import { labelsFor } from "@/lib/questions";
 import type { Answer, ModelId, ModelRun, ModelState, Preset, Question, RunError } from "@/lib/types";
 import { Panel } from "./group";
@@ -89,7 +89,7 @@ export function OutputPanel({ questions, models, states, rule, canLoadPreset, on
         </h2>
         <ul className="hidden min-w-0 flex-1 items-center gap-3 text-xs text-muted-foreground sm:flex">
           {models.map((id) => {
-            const m = modelById(id);
+            const m = modelMeta(id);
             return (
               <li key={id} className="flex items-center gap-1.5 truncate">
                 <Dot color={m.color} />
@@ -164,7 +164,7 @@ function RunTable({ models, states, onInspect }: Pick<Props, "models" | "states"
         </TableHeader>
         <TableBody>
           {models.map((id) => {
-            const m = modelById(id);
+            const m = modelMeta(id);
             const s = stateOf(states, id);
             return (
               <TableRow key={id}>
@@ -258,7 +258,7 @@ function RuleBlock({
     >
       <ul className="divide-y">
         {models.map((id) => {
-          const m = modelById(id);
+          const m = modelMeta(id);
           const s = stateOf(states, id);
           let outcome: "yes" | "no" | "unclear" | "pending" | "error" = "pending";
           if (s.status === "done") {
@@ -293,7 +293,7 @@ function RuleBlock({
 /** Fehler eines Modells: kompakt, mit Modell, Meldung und ggf. „Erneut versuchen“. Nie eine Antwort. */
 function ErrorNotice({ run, onRetry, disabled }: { run: ModelRun; onRetry: (m: ModelId) => void; disabled: boolean }) {
   if (!run.error) return null;
-  const m = modelById(run.modelId);
+  const m = modelMeta(run.modelId);
   const view = errorView(run.error);
   return (
     <motion.div {...APPEAR}>
@@ -418,7 +418,7 @@ function QuestionBlock({
 }) {
   const labels = labelsFor(q);
   const rows: Row[] = models.map((id) => {
-    const m = modelById(id);
+    const m = modelMeta(id);
     const s = stateOf(states, id);
     return { id, name: m.label, color: m.color, s, a: answerOf(s, q.id) };
   });

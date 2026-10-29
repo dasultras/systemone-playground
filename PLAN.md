@@ -1,13 +1,13 @@
 # System One Playground
 
-Sandbox-UI zum Testen von System-One-Modellen: TypeSafe Jev (gehostet) und lokale Modelle über Ollama, nebeneinander. Clean, im Apple-Stil.
+Sandbox-UI zum Testen von System-One-Modellen: TypeSafe Jev (gehostet) und lokale Modelle über Ollama oder vLLM, nebeneinander. Clean, im Apple-Stil.
 
 ## Stack
 
 - **Next.js 16** (App Router, TypeScript), **Node 24**, npm
 - Tailwind CSS v4, shadcn/ui (base-ui), Motion
 - React Hook Form + Zod, TanStack Query
-- `@typesafe-ai/sdk` für beide Backends
+- `@typesafe-ai/sdk` für alle Backends
 - Persistenz nur im Browser (`localStorage`)
 - OxLint + Prettier (Tailwind-Plugin), `npm run check` / `npm run fix`
 - Docker (`standalone`, `node:24-slim`), GitHub Actions → ghcr.io (amd64 + arm64)
@@ -15,15 +15,22 @@ Sandbox-UI zum Testen von System-One-Modellen: TypeSafe Jev (gehostet) und lokal
 ## Architektur
 
 ```
-UI ── POST /api/run ──▶ Route Handler (Guard) ──▶ TypeSafeClient
+UI ── GET /api/models ──▶ Registry (30-s-Cache) ──▶ Ollama /api/tags + /api/show, vLLM /v1/models, TypeSafe statisch
+   ── POST /api/run ──▶ Route Handler (Guard) ──▶ TypeSafeClient
                                                    ├─ TypeSafe  https://api.typesafe.ai
-                                                   └─ Ollama    OLLAMA_BASE_URL (/v1/systemone)
+                                                   ├─ Ollama    OLLAMA_BASE_URL (/v1/systemone)
+                                                   └─ vLLM      VLLM_BASE_URL (/v1/systemone)
                          ◀── answers + metrics + usage + latency + raw request/response
 ```
 
-- Ollama spricht nativ das Jev-Schema. Deshalb dient ein SDK-Client für beide Backends, nur die Konfiguration unterscheidet sich:
+- Ollama und vLLM sprechen nativ das Jev-Schema. Deshalb dient ein SDK-Client für alle Backends, nur die Konfiguration unterscheidet sich:
   - **TypeSafe:** `TYPESAFE_API_KEY`, Timeout 30 s.
-  - **Ollama:** `baseURL`, Dummy-Key, `compression: false`, Timeout 120 s, `maxRetries: 0`.
+  - **Ollama, vLLM:** `baseURL`, Dummy-Key, `compression: false`, Timeout 120 s, `maxRetries: 0`.
+- **Modelle frei wählbar:** IDs tragen das Backend als Präfix, z. B. `ollama:elephant-1:9b-q4-ctx8k`, `vllm:<name>`, `typesafe:jev-latest`.
+  - `GET /api/models` listet je aktivem Backend (Ollama standardmäßig, leeres `OLLAMA_BASE_URL` schaltet es ab; vLLM/TypeSafe nur mit Env): Ollama nur mit Capability `decision` (Limit aus `num_ctx`, sonst `*.context_length`), vLLM mit `max_model_len`, TypeSafe statisch und nur mit Key (kein API-Aufruf).
+  - Nicht erreichbare Backends stehen in `errors`, die Route scheitert nie. Cache 30 s, `?refresh` lädt neu.
+  - `/api/run` prüft die ID gegen diese Liste. Standard: `DEFAULT_MODEL`, sonst das erste Ollama-Modell.
+  - Verlaufseinträge mit entfernten Modellen laden weiter; alte IDs ohne Präfix gelten als Ollama (`jev-latest` als TypeSafe).
 - Den Key liest nur Server-Code (`server-only`), er bekommt nie das Präfix `NEXT_PUBLIC_`.
 - Der Guard enthält ein Rate-Limit, ein Tagesbudget für TypeSafe, das Größenlimit und `AbortSignal`-Timeouts.
 
@@ -42,7 +49,7 @@ UI ── POST /api/run ──▶ Route Handler (Guard) ──▶ TypeSafeClient
 - **Detailansicht:** normierte Entropie, Tokens, Latenz, Modell-ID, Raw-Payload.
 - **Reihenfolge mitteln** (optional): 2–4 zyklische Verschiebungen der Optionen im selben Request, gegen Positions-Bias.
 - **Vergleich:** Derselbe Request mit demselben Fragenbündel geht an mehrere Modelle.
-- **Modelle:** TypeSafe `jev-latest`. Lokal `elephant-1:9b-q4-ctx8k` (Standard), `clef-flash`, `pplx-decider` 27B.
+- **Modellfarben** folgen deterministisch aus der ID (sechs Tokens `--model-1` bis `--model-6`).
 
 ## Leitplanken
 
@@ -50,7 +57,7 @@ UI ── POST /api/run ──▶ Route Handler (Guard) ──▶ TypeSafeClient
 - **Fakten berechnet der Code** und legt sie in den State, z. B. `days_since_order`. Die Modelle kennen das heutige Datum nicht.
 - **State kürzen** statt den Kontext zu vergrößern:
   - Vorlagen enthalten nur die relevanten Felder.
-  - `lib/limits.ts` schätzt die Tokens (Zeichen / 2,6) gegen das Modell-Limit. Lokal sind das 8k bzw. 16k Tokens, bei TypeSafe 64k.
+  - `lib/limits.ts` schätzt die Tokens (Zeichen / 2,6) gegen das Kontextlimit aus `/api/models`, bei TypeSafe 64k.
 - **Fehler bleiben Fehler**, z. B. Timeout oder Overflow-400. Sie werden nie als Antwort angezeigt.
 - **Logs nur mit Metadaten**, ohne State-Inhalt. Next-Telemetrie aus.
 - **TypeSafe nur mit synthetischen Daten** (US-Hosting). Die UI zeigt dort einen Hinweis.
@@ -63,12 +70,12 @@ Schritte 1–7 umgesetzt:
 - Vorlagen als JSON-Datei (`PRESETS_FILE`, Standard `config/presets.default.json`), geprüft per Zod-Schema; Menü „Vorlage laden“ erst ab zwei Vorlagen.
 - Historie in `localStorage` (höchstens 50 Läufe), Export als JSON/CSV.
 - Fehlerzustände je Modell mit Wiederholen, Dark Mode (System/Hell/Dunkel), Mobile, dezente Animationen.
-- `/api/run`, `/api/health`, Docker, CI nach GHCR.
+- `/api/models`, `/api/run`, `/api/health`, Docker, CI nach GHCR.
 - Evaluation (`npm run eval`, `eval/`, Kennzahlen in `lib/calibration.ts`):
   - 600 synthetische, gelabelte Items (120 States × 5 Fragen, leicht/schwer), Split 200/400 nach States.
   - Brier, NLL, ECE, Risk-Coverage/AURC, Cluster-Bootstrap-KI, Temperature Scaling auf dem Kalibrierungs-Split.
   - Ergebnisse unter `eval/out/` (nicht im Repo), Cache pro Frage, Läufe setzen fort.
-  - `jev-latest` nur mit `EVAL_ALLOW_TYPESAFE=1`.
+  - `typesafe:`-Modelle nur mit `EVAL_ALLOW_TYPESAFE=1`.
 
 ## Offen
 

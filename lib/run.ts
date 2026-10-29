@@ -1,12 +1,12 @@
 import { z } from "zod";
-import { MODELS } from "./models";
 import type { ModelId, ModelRun, RunError } from "./types";
 
 const Text = z.string().trim().min(1);
 
 /** Body von `POST /api/run`: ein Modell pro Request, damit jedes Ergebnis einzeln eintrifft. */
 export const RunRequest = z.object({
-  modelId: z.custom<ModelId>((v) => MODELS.some((m) => m.id === v)),
+  // Ob das Modell verfügbar ist, prüft die Route gegen `/api/models`.
+  modelId: z.string().min(1),
   state: Text,
   facts: z.array(z.object({ key: Text, value: z.string() })),
   questions: z

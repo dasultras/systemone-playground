@@ -20,7 +20,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { NO_HISTORY, groupOf, timeLabel } from "@/lib/history";
-import { modelById } from "@/lib/models";
+import { modelMeta } from "@/lib/models";
 import type { HistoryEntry, HistoryGroup } from "@/lib/types";
 import { ResizeHandle } from "./resize-handle";
 import { Dot } from "./viz";
@@ -138,9 +138,9 @@ export function AppSidebar({
                                 <span className="tabular-nums">{timeLabel(h.at)}</span>
                                 <span className="flex gap-1">
                                   {h.models.map((m) => (
-                                    <span key={m} className="inline-flex" title={modelById(m).label}>
-                                      <Dot color={modelById(m).color} className="size-1.5!" />
-                                      <span className="sr-only">{modelById(m).label}</span>
+                                    <span key={m} className="inline-flex" title={modelMeta(m).label}>
+                                      <Dot color={modelMeta(m).color} className="size-1.5!" />
+                                      <span className="sr-only">{modelMeta(m).label}</span>
                                     </span>
                                   ))}
                                 </span>

@@ -13,16 +13,27 @@ export type Question = {
   scoreHigh: string;
 };
 
-export type ModelId = "jev-latest" | "elephant-1:9b-q4-ctx8k" | "clef-flash" | "pplx-decider";
+/** Immer mit Backend-Präfix, z. B. `ollama:elephant-1:9b-q4-ctx8k`. */
+export type ModelId = string;
+
+export type Backend = "ollama" | "vllm" | "typesafe";
 
 export type ModelInfo = {
   id: ModelId;
   label: string;
-  backend: "typesafe" | "ollama";
+  backend: Backend;
   hosted: boolean;
+  /** Kontextlimit in Tokens; 0 = unbekannt. */
   contextTokens: number;
   size: string;
   color: string;
+};
+
+/** Antwort von `GET /api/models`: verfügbare Modelle und nicht erreichbare Backends. */
+export type ModelsResponse = {
+  models: ModelInfo[];
+  defaultModel: ModelId | null;
+  errors: { backend: Backend; message: string }[];
 };
 
 export type Fact = { key: string; value: string };

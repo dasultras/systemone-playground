@@ -14,25 +14,28 @@ import {
   type TypeSafeClientConfig,
 } from "@typesafe-ai/sdk";
 import { computeMetrics } from "./metrics";
-import { modelById } from "./models";
+import { unreachable } from "./models";
+import { ollamaBase } from "./registry";
 import { labelsFor } from "./questions";
 import { errorRun, type RunRequest } from "./run";
-import type { ModelInfo, ModelRun, Question, RunError } from "./types";
+import type { Backend, ModelInfo, ModelRun, Question, RunError } from "./types";
 
-/** Ollama spricht nativ das Jev-Schema; beide Backends nutzen denselben SDK-Client. */
-const CONFIG: Record<ModelInfo["backend"], TypeSafeClientConfig> = {
-  typesafe: { timeout: 30_000 },
-  ollama: {
-    baseURL: process.env.OLLAMA_BASE_URL ?? "http://localhost:11434",
-    apiKey: "ollama",
-    compression: false,
-    timeout: 120_000,
-    retry: { maxRetries: 0 },
-  },
+/** Ollama und vLLM sprechen nativ das Jev-Schema; alle Backends nutzen denselben SDK-Client. */
+const local = (baseURL: string | undefined, apiKey: string): TypeSafeClientConfig => ({
+  baseURL,
+  apiKey,
+  compression: false,
+  timeout: 120_000,
+  retry: { maxRetries: 0 },
+});
+const CONFIG: Record<Backend, () => TypeSafeClientConfig> = {
+  typesafe: () => ({ timeout: 30_000 }),
+  ollama: () => local(ollamaBase(), "ollama"),
+  vllm: () => local(process.env.VLLM_BASE_URL, "vllm"),
 };
-const clients: Partial<Record<ModelInfo["backend"], TypeSafeClient>> = {};
+const clients: Partial<Record<Backend, TypeSafeClient>> = {};
 // Lazy, damit ein fehlender TYPESAFE_API_KEY nur TypeSafe-Läufe scheitern lässt.
-const client = (b: ModelInfo["backend"]) => (clients[b] ??= new TypeSafeClient(CONFIG[b]));
+const client = (b: Backend) => (clients[b] ??= new TypeSafeClient(CONFIG[b]()));
 
 /** Choice mit `average` > 1: zyklisch verschobene Kopien unter `id~s`, gegen Positions-Bias. */
 const shifts = (q: Question, average: number) => (q.type === "choice" ? Math.min(average, q.options.length) : 1);
@@ -67,28 +70,31 @@ function probsOf(q: Question, answers: SystemOneResult<Questions>["answers"], av
   return labelsFor(q).map((l) => runs.reduce((sum, r) => sum + r.probabilities[l], 0) / n);
 }
 
-function toError(e: unknown, backend: ModelInfo["backend"]): RunError {
+function toError(e: unknown, backend: Backend): RunError {
   if (e instanceof APITimeoutError) return { kind: "timeout", message: `Timeout nach ${e.timeoutMs / 1000} s.` };
   if (e instanceof APIError) {
     const overflow = e.status === 413 || (e.status === 400 && /context|exceed/i.test(e.message));
     return { kind: overflow ? "overflow" : "api", message: e.message, status: e.status };
   }
-  if (e instanceof APIConnectionError && backend === "ollama")
-    return { kind: "network", message: "Ollama nicht erreichbar (OLLAMA_BASE_URL). Läuft „ollama serve“?" };
+  if (e instanceof APIConnectionError && backend !== "typesafe") {
+    const hint = backend === "ollama" ? " Läuft „ollama serve“?" : "";
+    return { kind: "network", message: unreachable(backend) + hint };
+  }
   const message = e instanceof Error ? e.message : String(e);
   return { kind: e instanceof APIConnectionError ? "network" : "api", message };
 }
 
+/** `model` ist ein verfügbares Modell aus `/api/models` (ID `backend:name`); der Request trägt den Namen ohne Präfix. */
 export async function runModel(
   { modelId, state, facts, questions, average }: RunRequest,
+  { id, backend }: ModelInfo,
   signal: AbortSignal,
 ): Promise<ModelRun> {
   const request = {
-    model: modelId,
+    model: id.slice(backend.length + 1),
     state: facts.length ? { text: state, facts: Object.fromEntries(facts.map((f) => [f.key, f.value])) } : state,
     questions: toQuestions(questions, average),
   };
-  const { backend } = modelById(modelId);
   const started = performance.now();
   const latency = () => Math.round(performance.now() - started);
   try {

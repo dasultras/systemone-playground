@@ -5,7 +5,6 @@ import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Label } from "@/components/ui/label";
@@ -13,18 +12,17 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { estimateTokens, fmtInt, fullStateText } from "@/lib/limits";
-import { MODELS } from "@/lib/models";
+import { fmtInt, requestTokens } from "@/lib/limits";
+import { modelMeta } from "@/lib/models";
 import { newQuestion } from "@/lib/questions";
-import type { Fact, Mode, ModelId, Preset, Question, QuestionType } from "@/lib/types";
+import type { Fact, Mode, ModelId, ModelsResponse, Preset, Question, QuestionType } from "@/lib/types";
 import { Group, GroupRow } from "./group";
+import { ModelPicker } from "./model-picker";
 import { OptionsEditor } from "./options-editor";
 import { Segmented } from "./segmented";
-import { Dot } from "./viz";
 
 export const MAX_OPTIONS = 10;
 export const MAX_QUESTIONS = 5;
-export const MAX_MODELS = 3;
 
 export type Invalid = { id: string; message: string };
 
@@ -58,6 +56,9 @@ type Props = {
   facts: Fact[];
   questions: Question[];
   onQuestions: (q: Question[]) => void;
+  /** Verfügbare Modelle aus `/api/models`; `null`, solange sie laden. */
+  catalog: ModelsResponse | null;
+  onRefreshModels: () => Promise<void>;
   models: ModelId[];
   onModels: (m: ModelId[]) => void;
   average: number;
@@ -68,19 +69,14 @@ type Props = {
 };
 
 export function InputPanel(p: Props) {
-  const fullText = fullStateText(p.state, p.facts);
-  const tokens =
-    estimateTokens(fullText) + p.questions.reduce((s, q) => s + estimateTokens(q.text + q.options.join(" ")) + 24, 0);
+  const tokens = requestTokens(p.state, p.facts, p.questions);
   const hasChoice = p.questions.some((q) => q.type === "choice");
-  const hosted = p.models.some((id) => MODELS.find((m) => m.id === id)?.hosted);
+  const hosted = p.models.some((id) => modelMeta(id).hosted);
+  // Nur mit mindestens einem verfügbaren Modell; sonst scheitert jeder Lauf mit „Modell nicht verfügbar“.
+  const ready = p.models.some((id) => p.catalog?.models.some((m) => m.id === id));
 
   const update = (id: string, patch: Partial<Question>) =>
     p.onQuestions(p.questions.map((q) => (q.id === id ? { ...q, ...patch } : q)));
-
-  const setModel = (id: ModelId, on: boolean) => {
-    if (!on && p.models.length > 1) p.onModels(p.models.filter((m) => m !== id));
-    if (on && p.models.length < MAX_MODELS && !p.models.includes(id)) p.onModels([...p.models, id]);
-  };
 
   return (
     <section
@@ -187,45 +183,13 @@ export function InputPanel(p: Props) {
         )}
 
         <div>
-          <Group
-            title="Modelle"
-            aside={<span className="text-xs text-muted-foreground">bis zu {MAX_MODELS} zum Vergleich</span>}
-          >
-            {MODELS.map((m) => {
-              const on = p.models.includes(m.id);
-              const locked = (!on && p.models.length >= MAX_MODELS) || (on && p.models.length === 1);
-              const over = tokens > m.contextTokens;
-              const id = `model-${m.id}`;
-              return (
-                <Label
-                  key={m.id}
-                  htmlFor={id}
-                  className={`flex min-h-11 items-center gap-2.5 px-3 py-1.5 font-normal ${locked ? "opacity-60" : "cursor-pointer hover:bg-muted/60"}`}
-                >
-                  <Checkbox
-                    id={id}
-                    aria-label={m.label}
-                    checked={on}
-                    disabled={locked}
-                    onCheckedChange={(v) => setModel(m.id, v === true)}
-                  />
-                  <Dot color={m.color} />
-                  <span className="min-w-0 flex-1 leading-tight">
-                    <span className="block truncate text-[13px] font-medium">{m.label}</span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {m.backend === "typesafe" ? "TypeSafe, gehostet" : "Ollama, lokal"}, {m.size}
-                    </span>
-                  </span>
-                  <span
-                    className={`text-xs tabular-nums ${over ? "font-medium text-destructive" : "text-muted-foreground"}`}
-                  >
-                    {fmtInt(tokens)} / {fmtInt(m.contextTokens)}
-                    {over && <span className="sr-only"> überschreitet das Limit</span>}
-                  </span>
-                </Label>
-              );
-            })}
-          </Group>
+          <ModelPicker
+            catalog={p.catalog}
+            selected={p.models}
+            onSelected={p.onModels}
+            tokens={tokens}
+            onRefresh={p.onRefreshModels}
+          />
           {hosted && (
             <Alert className="mt-2 border-warn/40 bg-warn-soft text-warn">
               <TriangleAlert aria-hidden />
@@ -257,7 +221,7 @@ export function InputPanel(p: Props) {
       </div>
 
       <footer className="sticky bottom-0 border-t bg-background px-4 py-3">
-        <Button size="lg" onClick={p.onRun} disabled={p.running} className="h-9 w-full text-[13px]">
+        <Button size="lg" onClick={p.onRun} disabled={p.running || !ready} className="h-9 w-full text-[13px]">
           {p.running ? <Loader2 aria-hidden className="animate-spin" /> : <Play aria-hidden className="fill-current" />}
           {p.running ? "Läuft …" : p.models.length > 1 ? `Auf ${p.models.length} Modellen ausführen` : "Ausführen"}
         </Button>
@@ -265,6 +229,8 @@ export function InputPanel(p: Props) {
           <p role="alert" className="mt-1.5 text-xs text-destructive">
             {p.invalid.message}
           </p>
+        ) : p.catalog && p.models.length > 0 && !ready ? (
+          <p className="mt-1.5 text-xs text-muted-foreground">Kein ausgewähltes Modell verfügbar.</p>
         ) : (
           <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground pointer-coarse:hidden">
             <KbdGroup>

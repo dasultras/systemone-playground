@@ -48,10 +48,12 @@
   --bad-soft: #fbe8e7;
 
   /* Modellfarben: Daten, nicht Chrome. Mindestens 3:1 gegen card. */
-  --model-elephant: #e8710a;
-  --model-clef: #8e5bd9;
-  --model-pplx: #0e9f8e;
-  --model-jev: #2459cf;
+  --model-1: #e8710a;
+  --model-2: #8e5bd9;
+  --model-3: #0e9f8e;
+  --model-4: #2459cf;
+  --model-5: #d6336c;
+  --model-6: #2f9e44;
 }
 
 .dark {
@@ -92,10 +94,12 @@
   --bad: #ff7b72;
   --bad-soft: #2e1716;
 
-  --model-elephant: #f08a2e;
-  --model-clef: #a47ce6;
-  --model-pplx: #19b8a5;
-  --model-jev: #6b95f2;
+  --model-1: #f08a2e;
+  --model-2: #a47ce6;
+  --model-3: #19b8a5;
+  --model-4: #6b95f2;
+  --model-5: #f06595;
+  --model-6: #51cf66;
 }
 
 @theme inline {
