@@ -72,7 +72,10 @@ Schritte 1–7 umgesetzt:
 - Vorlagen als JSON-Datei (`PRESETS_FILE`, Standard `config/presets.default.json`), geprüft per Zod-Schema; Menü „Vorlage laden“ erst ab zwei Vorlagen.
 - Historie in `localStorage` (höchstens 50 Läufe), Export als JSON/CSV.
 - Fehlerzustände je Modell mit Wiederholen, Dark Mode (System/Hell/Dunkel), Mobile, dezente Animationen.
-- `/api/models`, `/api/run`, `/api/health`, Docker, CI nach GHCR.
+- Modellwahl dynamisch über `/api/models` (Ollama, vLLM, TypeSafe), bekannte Modelle aus `config/models.json` mit Pull
+  aus der UI (`ALLOW_PULL=1`), Startmodell per `DEFAULT_MODEL`.
+- `/api/models`, `/api/models/pull`, `/api/run`, `/api/health`, Docker, CI nach GHCR.
+- Unit-Tests (`npm test`) für Kennzahlen, Vorlagen, Historie, Modell-IDs und Pull-Stream.
 - Evaluation (`npm run eval`, `eval/`, Kennzahlen in `lib/calibration.ts`):
   - 600 synthetische, gelabelte Items (120 States × 5 Fragen, leicht/schwer), Split 200/400 nach States.
   - Brier, NLL, ECE, Risk-Coverage/AURC, Cluster-Bootstrap-KI, Temperature Scaling auf dem Kalibrierungs-Split.

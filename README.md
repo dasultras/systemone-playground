@@ -18,7 +18,22 @@ npm ci
 npm run dev
 ```
 
-`npm run check` prüft Typen, Lint (OxLint) und Format (Prettier), `npm run fix` behebt Lint und Format.
+`npm run check` prüft Typen, Lint (OxLint) und Format (Prettier), `npm run fix` behebt Lint und Format, `npm test`
+führt die Unit-Tests aus.
+
+### Konfiguration
+
+Alle Variablen stehen kommentiert in [`.env.example`](.env.example), der Server liest sie beim Start.
+
+| Variable                  | Wirkung                                                                        |
+| ------------------------- | ------------------------------------------------------------------------------ |
+| `OLLAMA_BASE_URL`         | Ollama-Instanz (Standard `http://localhost:11434`), leer schaltet Ollama ab    |
+| `VLLM_BASE_URL`           | vLLM-Instanz, ohne Wert keine vLLM-Modelle                                     |
+| `TYPESAFE_API_KEY`        | TypeSafe Jev (gehostet), ohne Key nicht gelistet                               |
+| `TYPESAFE_DAILY_REQUESTS` | Tagesbudget für TypeSafe-Läufe (Standard 200)                                  |
+| `DEFAULT_MODEL`           | Vorausgewähltes Modell mit Präfix, z. B. `ollama:elephant-1:9b-q4-ctx8k`       |
+| `PRESETS_FILE`            | Vorlagen-Datei (Standard `config/presets.default.json`)                        |
+| `ALLOW_PULL`              | `1` erlaubt das Pullen bekannter Modelle aus der UI (belegt Platz auf dem Host) |
 
 ### Dev Container
 
@@ -32,7 +47,8 @@ Server liest die Datei aus `PRESETS_FILE` (Standard [`config/presets.default.jso
 einer einzigen Vorlage). Ist sie fehlerhaft oder fehlt sie, gilt der Standard. Ab zwei Vorlagen zeigt die Eingabe das
 Menü „Vorlage laden“. [`examples/presets.example.json`](examples/presets.example.json) zeigt alle Fragetypen und ein
 Bündel mit Regel, z. B. mit `PRESETS_FILE=examples/presets.example.json` in `.env`. Im Container hängt `compose.yml`
-die Datei per Volume ein (dort auskommentiert).
+eine eigene Datei per Volume nach `/app/config/presets.json` ein und setzt `PRESETS_FILE` darauf (beides dort
+auskommentiert).
 
 ## Evaluation
 
@@ -46,9 +62,8 @@ Daten sind synthetisch.
 
 Kompatibel mit jedem Server, der das System-One-Schema (`/v1/systemone`) spricht, angebunden über die Base-URL. Ollama
 ist standardmäßig aktiv (`localhost:11434`, leeres `OLLAMA_BASE_URL` schaltet es ab), vLLM und TypeSafe nur mit gesetzter
-Env (`VLLM_BASE_URL`, `TYPESAFE_API_KEY`). `GET /api/models`
-listet die Modelle mit Präfix (`ollama:`, `vllm:`, `typesafe:`), 30 s gecacht, Ollama nur mit Capability `decision`.
-`DEFAULT_MODEL` wählt das Startmodell vor.
+Env (`VLLM_BASE_URL`, `TYPESAFE_API_KEY`). `GET /api/models` listet die Modelle mit Präfix (`ollama:`, `vllm:`,
+`typesafe:`), 30 s gecacht, Ollama nur mit Capability `decision`. `DEFAULT_MODEL` wählt das Startmodell vor.
 
 - **TypeSafe** (`api.typesafe.ai`), gehostet
 - **[Ollama](https://docs.ollama.com/api/systemone)** (`localhost:11434`), lokal
@@ -71,7 +86,8 @@ docker compose -f compose.yml -f compose.dev.yml up --build
 ```
 
 Ollama läuft nativ auf dem Host (GPU/Metal), der Container erreicht es über `host.docker.internal:11434`.
-`TYPESAFE_API_KEY` kommt aus `.env`. Health-Check: `GET /api/health`.
+`TYPESAFE_API_KEY` kommt aus `.env`, weitere Variablen (`VLLM_BASE_URL`, `DEFAULT_MODEL`, `PRESETS_FILE`,
+`ALLOW_PULL`) stehen auskommentiert in `compose.yml`. Health-Check: `GET /api/health`.
 
 Images baut die [CI](.github/workflows/ci.yml) für amd64 und arm64, nur bei Tags `v*.*.*` oder manuellem Dispatch.
 
