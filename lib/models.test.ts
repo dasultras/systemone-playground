@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  colorsFor,
+  findKnown,
   fromOllama,
   fromVllm,
   legacyModelId,
@@ -35,6 +37,14 @@ test("modelColor: deterministisch, sechs Tokens", () => {
     assert.equal(modelColor(id), modelColor(id));
     assert.match(modelColor(id), /^var\(--model-[1-6]\)$/);
   }
+});
+
+test("colorsFor: bis zu sechs Modelle bekommen verschiedene Farben, die erste behält ihre Hash-Farbe", () => {
+  const ids = ["ollama:a", "ollama:b", "vllm:c", "typesafe:jev-latest", "ollama:clef-flash", "x"];
+  const c = colorsFor(ids);
+  assert.equal(new Set(Object.values(c)).size, 6);
+  assert.equal(c[ids[0]], modelColor(ids[0]));
+  assert.equal(colorsFor([...ids, "y"]).y.startsWith("var(--model-"), true);
 });
 
 test("modelMeta: unbekannte ID stürzt nicht ab", () => {
@@ -113,4 +123,11 @@ test("mergeKnown: parent_model verdeckt, :latest und Groß-/Kleinschreibung egal
   );
   assert.equal(mergeKnown(known, []).length, 3);
   assert.deepEqual(mergeKnown([], installed), []);
+});
+
+test("findKnown: nur Modelle aus der Liste, :latest und Groß-/Kleinschreibung egal", () => {
+  const known = [k("hf.co/waseigo/elephant-1-decision-GGUF:latest"), k("clef-flash:latest")];
+  assert.equal(findKnown(known, "CLEF-FLASH")?.name, "clef-flash:latest");
+  assert.equal(findKnown(known, "hf.co/waseigo/elephant-1-decision-gguf")?.name, known[0].name);
+  for (const bad of ["evil.example/x:latest", "clef-flash:v2", ""]) assert.equal(findKnown(known, bad), null, bad);
 });

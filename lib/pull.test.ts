@@ -1,14 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import {
-  PULL_START,
-  isModelRef,
-  pullModel,
-  reduceProgress,
-  splitLines,
-  statusText,
-  type PullProgress,
-} from "./pull.ts";
+import { PULL_START, pullModel, reduceProgress, splitLines, statusText, type PullProgress } from "./pull.ts";
 
 test("splitLines: Zeile über Chunks, kaputte Zeile fällt weg", () => {
   const a = splitLines('{"status":"pulling manifest"}\n{"status":"pul');
@@ -31,13 +23,6 @@ test("reduceProgress: summiert Layer, success und Fehler", () => {
   const err = reduceProgress(p, { error: "pull model manifest: file does not exist" }, layers);
   assert.equal(err.error, "pull model manifest: file does not exist");
   assert.equal(err.done, false);
-});
-
-test("isModelRef: Referenzen ja, Leerzeichen, Pfade und URLs nein", () => {
-  for (const ok of ["hf.co/waseigo/elephant-1-decision-GGUF:latest", "clef-flash", "clef-flash:latest", "org/m:v2"])
-    assert.equal(isModelRef(ok), true, ok);
-  for (const bad of ["a b", "../x", "http://x", "/x", "", "a/b/c/d", "x:", "A", "a".repeat(201)])
-    assert.equal(isModelRef(bad), false, bad);
 });
 
 const ndjson = (chunks: string[], status = 200) =>

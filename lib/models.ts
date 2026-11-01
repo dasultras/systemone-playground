@@ -26,11 +26,28 @@ export function legacyModelId(id: string): ModelId {
   return id === "jev-latest" ? "typesafe:jev-latest" : `ollama:${id}`;
 }
 
-/** Deterministisch per djb2 auf sechs Farb-Tokens, damit ein Modell überall dieselbe Farbe hat. */
-export function modelColor(id: ModelId): string {
+const SLOTS = 6;
+const token = (i: number) => `var(--model-${i + 1})`;
+/** Deterministisch per djb2 auf einen von sechs Farb-Slots. */
+function slot(id: ModelId): number {
   let h = 5381;
   for (const c of id) h = ((h << 5) + h + c.charCodeAt(0)) >>> 0;
-  return `var(--model-${(h % 6) + 1})`;
+  return h % SLOTS;
+}
+
+export const modelColor = (id: ModelId) => token(slot(id));
+
+/** Farben für eine Auswahl: Hash-Farbe, bei Kollision die nächste freie, damit verglichene Modelle nie gleich aussehen. */
+export function colorsFor(ids: ModelId[]): Record<ModelId, string> {
+  const used = new Set<number>();
+  return Object.fromEntries(
+    ids.map((id) => {
+      let i = slot(id);
+      while (used.has(i) && used.size < SLOTS) i = (i + 1) % SLOTS;
+      used.add(i);
+      return [id, token(i)];
+    }),
+  );
 }
 
 const info = (backend: Backend, name: string, contextTokens: number, size: string): ModelInfo => {
@@ -48,10 +65,11 @@ const info = (backend: Backend, name: string, contextTokens: number, size: strin
 
 const ctxLabel = (ctx: number) => (ctx ? `${Math.round(ctx / 1024)}k` : "");
 
-/** Nur aus der ID abgeleitet, stürzt nie ab, z. B. für Verlaufseinträge mit entfernten Modellen. */
-export function modelMeta(id: ModelId): ModelInfo {
+/** Nur aus der ID abgeleitet, stürzt nie ab, z. B. für Verlaufseinträge mit entfernten Modellen. `among`: Farbe innerhalb dieser Auswahl. */
+export function modelMeta(id: ModelId, among?: ModelId[]): ModelInfo {
   const p = parseModelId(legacyModelId(id)) ?? { backend: "ollama" as const, name: id };
-  return info(p.backend, p.name, 0, "nicht verfügbar");
+  const m = info(p.backend, p.name, 0, "nicht verfügbar");
+  return among ? { ...m, color: colorsFor(among)[id] ?? m.color } : m;
 }
 
 type OllamaDetails = { parameter_size?: string; quantization_level?: string; parent_model?: string };
@@ -101,6 +119,10 @@ export function mergeKnown(known: KnownModel[], installed: string[]): KnownModel
   const have = new Set(installed.map(normRef));
   return known.filter((k) => !have.has(normRef(k.name)));
 }
+
+/** Pullbar ist nur, was in `config/models.json` steht; liefert dessen Referenz oder null. */
+export const findKnown = (known: KnownModel[], ref: string) =>
+  known.find((k) => normRef(k.name) === normRef(ref)) ?? null;
 
 export async function fetchModels(refresh = false): Promise<ModelsResponse> {
   const res = await fetch(`/api/models${refresh ? "?refresh=1" : ""}`);

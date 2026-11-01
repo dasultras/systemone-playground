@@ -89,7 +89,7 @@ export function OutputPanel({ questions, models, states, rule, canLoadPreset, on
         </h2>
         <ul className="hidden min-w-0 flex-1 items-center gap-3 text-xs text-muted-foreground sm:flex">
           {models.map((id) => {
-            const m = modelMeta(id);
+            const m = modelMeta(id, models);
             return (
               <li key={id} className="flex items-center gap-1.5 truncate">
                 <Dot color={m.color} />
@@ -125,7 +125,7 @@ export function OutputPanel({ questions, models, states, rule, canLoadPreset, on
         <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
           <div className="mx-auto max-w-[860px] space-y-4 px-4 pt-5 pb-10 sm:px-6">
             {failed.map((r) => (
-              <ErrorNotice key={r.modelId} run={r} onRetry={onRetry} disabled={running} />
+              <ErrorNotice key={r.modelId} run={r} models={models} onRetry={onRetry} disabled={running} />
             ))}
             {models.length > 1 && <RunTable models={models} states={states} onInspect={onInspect} />}
             {!allFailed && (
@@ -164,7 +164,7 @@ function RunTable({ models, states, onInspect }: Pick<Props, "models" | "states"
         </TableHeader>
         <TableBody>
           {models.map((id) => {
-            const m = modelMeta(id);
+            const m = modelMeta(id, models);
             const s = stateOf(states, id);
             return (
               <TableRow key={id}>
@@ -258,7 +258,7 @@ function RuleBlock({
     >
       <ul className="divide-y">
         {models.map((id) => {
-          const m = modelMeta(id);
+          const m = modelMeta(id, models);
           const s = stateOf(states, id);
           let outcome: "yes" | "no" | "unclear" | "pending" | "error" = "pending";
           if (s.status === "done") {
@@ -291,9 +291,19 @@ function RuleBlock({
 }
 
 /** Fehler eines Modells: kompakt, mit Modell, Meldung und ggf. „Erneut versuchen“. Nie eine Antwort. */
-function ErrorNotice({ run, onRetry, disabled }: { run: ModelRun; onRetry: (m: ModelId) => void; disabled: boolean }) {
+function ErrorNotice({
+  run,
+  models,
+  onRetry,
+  disabled,
+}: {
+  run: ModelRun;
+  models: ModelId[];
+  onRetry: (m: ModelId) => void;
+  disabled: boolean;
+}) {
   if (!run.error) return null;
-  const m = modelMeta(run.modelId);
+  const m = modelMeta(run.modelId, models);
   const view = errorView(run.error);
   return (
     <motion.div {...APPEAR}>
@@ -418,7 +428,7 @@ function QuestionBlock({
 }) {
   const labels = labelsFor(q);
   const rows: Row[] = models.map((id) => {
-    const m = modelMeta(id);
+    const m = modelMeta(id, models);
     const s = stateOf(states, id);
     return { id, name: m.label, color: m.color, s, a: answerOf(s, q.id) };
   });

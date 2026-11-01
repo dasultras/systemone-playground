@@ -1,27 +1,32 @@
 import { z } from "zod";
-import { isModelRef } from "@/lib/pull";
-import { ollamaBase } from "@/lib/registry";
+import { findKnown } from "@/lib/models";
+import { ollamaBase, readKnown } from "@/lib/registry";
 
-// Leitet `POST /api/pull` von Ollama samt NDJSON-Fortschritt durch. Nur mit ALLOW_PULL=1, da es Plattenplatz belegt.
+// Leitet `POST /api/pull` von Ollama samt NDJSON-Fortschritt durch. Nur mit ALLOW_PULL=1, da es Plattenplatz belegt,
+// und nur für Modelle aus config/models.json, damit Ollama keine beliebigen Registries kontaktiert.
 const Body = z.object({ name: z.string() });
 
 const reject = (status: number, message: string) => Response.json({ error: { kind: "api", message } }, { status });
 
 export async function POST(req: Request) {
+  // Nur dieselbe Herkunft: Eine fremde Seite darf keinen Pull auf dem Host anstoßen. Ohne Origin (curl) ist es kein Browser.
+  const origin = req.headers.get("origin");
+  if (origin !== null && (!URL.canParse(origin) || new URL(origin).host !== req.headers.get("host")))
+    return reject(403, "Pull nur von derselben Herkunft.");
+  // Nur JSON: erzwingt bei fremden Origins zusätzlich einen CORS-Preflight, den die Route nicht beantwortet.
+  if (!req.headers.get("content-type")?.startsWith("application/json"))
+    return reject(415, "Erwartet Content-Type application/json.");
+
   const parsed = Body.safeParse(await req.json().catch(() => null));
-  const raw = parsed.success ? parsed.data.name.trim() : "";
-  const name = isModelRef(raw) ? raw : "";
+  const name = findKnown(await readKnown(), parsed.success ? parsed.data.name.trim() : "")?.name;
   if (process.env.ALLOW_PULL !== "1")
     return reject(
       403,
-      `Pullen ist deaktiviert (ALLOW_PULL=1). Alternativ auf dem Host: ollama pull ${name || "<name>"}`,
+      `Pullen ist deaktiviert (aktivieren mit ALLOW_PULL=1). Alternativ auf dem Host: ollama pull ${name ?? "<name>"}`,
     );
   const base = ollamaBase();
   if (!base) return reject(400, "Ollama-Backend ist nicht aktiv (OLLAMA_BASE_URL).");
-  // Nur JSON: erzwingt bei fremden Origins einen CORS-Preflight, den die Route nicht beantwortet.
-  if (!req.headers.get("content-type")?.startsWith("application/json"))
-    return reject(415, "Erwartet Content-Type application/json.");
-  if (!name) return reject(400, "Ungültiger Modellname.");
+  if (!name) return reject(400, "Nur Modelle aus config/models.json lassen sich pullen.");
 
   const up = await fetch(`${base}/api/pull`, {
     method: "POST",

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fmtInt, overLimit } from "@/lib/limits";
 import { fmtNum, fmtPct } from "@/lib/metrics";
-import { BACKEND_LABEL, modelMeta } from "@/lib/models";
+import { BACKEND_LABEL, colorsFor, modelMeta } from "@/lib/models";
 import { PULL_START, pullModel, statusText, type PullProgress } from "@/lib/pull";
 import type { KnownModel, ModelId, ModelsResponse } from "@/lib/types";
 import { Group } from "./group";
@@ -30,9 +30,10 @@ export function ModelPicker({ catalog, selected, onSelected, tokens, onRefresh }
   const [refreshing, setRefreshing] = useState(false);
   const available = catalog?.models ?? [];
   // Ausgewählte, aber nicht mehr verfügbare Modelle (z. B. aus dem Verlauf) bleiben sichtbar, damit man sie abwählen kann.
-  const missing = selected.filter((id) => !available.some((m) => m.id === id)).map(modelMeta);
+  const missing = selected.filter((id) => !available.some((m) => m.id === id)).map((id) => modelMeta(id));
   const rows = [...available.map((m) => ({ m, gone: false })), ...missing.map((m) => ({ m, gone: true }))];
   const known = catalog?.known ?? [];
+  const colors = colorsFor(selected);
 
   const setModel = (id: ModelId, on: boolean, gone: boolean) => {
     if (!on && (selected.length > 1 || gone)) onSelected(selected.filter((m) => m !== id));
@@ -90,7 +91,7 @@ export function ModelPicker({ catalog, selected, onSelected, tokens, onRefresh }
               disabled={locked}
               onCheckedChange={(v) => setModel(m.id, v === true, gone)}
             />
-            <Dot color={m.color} />
+            <Dot color={colors[m.id] ?? m.color} />
             <span className="min-w-0 flex-1 leading-tight">
               <span className="block truncate text-[13px] font-medium">{m.label}</span>
               <span className="block truncate text-xs text-muted-foreground">

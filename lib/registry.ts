@@ -61,7 +61,7 @@ const KnownFile = z.array(
 );
 
 /** Bekannte Modelle; ist die Datei unbrauchbar, gibt es keine. Logs nur mit Metadaten. */
-async function readKnown(): Promise<KnownModel[]> {
+export async function readKnown(): Promise<KnownModel[]> {
   try {
     // turbopackIgnore: sonst verfolgt der Build das ganze Projekt in den Standalone-Output.
     const raw = await readFile(resolve(/* turbopackIgnore: true */ process.cwd(), KNOWN_FILE), "utf8");

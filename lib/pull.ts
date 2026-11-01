@@ -2,15 +2,6 @@ import type { RunError } from "./types";
 
 // Rein und ohne server-only: Route, Model-Picker und Tests nutzen dieselben Helfer.
 
-/**
- * Ollama-Referenz wie `clef-flash:latest` oder `hf.co/org/modell:tag`: höchstens drei Segmente,
- * jedes beginnt mit Buchstabe oder Ziffer, keine Leerzeichen, kein `..`, keine URL.
- */
-export function isModelRef(name: string): boolean {
-  if (name.length < 1 || name.length > 200 || name.includes("..")) return false;
-  return /^[a-z0-9][A-Za-z0-9._-]*(\/[a-z0-9][A-Za-z0-9._-]*){0,2}(:[A-Za-z0-9._-]+)?$/.test(name);
-}
-
 export type PullProgress = { status: string; completed: number; total: number; done: boolean; error?: string };
 
 export const PULL_START: PullProgress = { status: "starte", completed: 0, total: 0, done: false };

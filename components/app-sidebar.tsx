@@ -139,7 +139,7 @@ export function AppSidebar({
                                 <span className="flex gap-1">
                                   {h.models.map((m) => (
                                     <span key={m} className="inline-flex" title={modelMeta(m).label}>
-                                      <Dot color={modelMeta(m).color} className="size-1.5!" />
+                                      <Dot color={modelMeta(m, h.models).color} className="size-1.5!" />
                                       <span className="sr-only">{modelMeta(m).label}</span>
                                     </span>
                                   ))}
