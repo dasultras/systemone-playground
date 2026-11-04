@@ -82,7 +82,7 @@ export function InputPanel(p: Props) {
     <section
       aria-label="Eingabe"
       style={{ "--input-w": `${p.width}px` } as React.CSSProperties}
-      className="flex w-full shrink-0 flex-col bg-canvas lg:min-h-0 lg:w-[clamp(320px,var(--input-w),calc(100%_-_420px))] lg:border-r"
+      className="flex w-full shrink-0 flex-col bg-canvas lg:min-h-0 lg:w-[clamp(320px,var(--input-w),calc(100%-420px))] lg:border-r"
     >
       <header className="flex h-11 shrink-0 items-center gap-2 border-b bg-background px-3">
         <SidebarTrigger aria-label="Verlauf ein- oder ausblenden" className="text-muted-foreground" />

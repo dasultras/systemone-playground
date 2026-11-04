@@ -123,7 +123,7 @@ export function OutputPanel({ questions, models, states, rule, canLoadPreset, on
         </div>
       ) : (
         <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
-          <div className="mx-auto max-w-[860px] space-y-4 px-4 pt-5 pb-10 sm:px-6">
+          <div className="mx-auto max-w-215 space-y-4 px-4 pt-5 pb-10 sm:px-6">
             {failed.map((r) => (
               <ErrorNotice key={r.modelId} run={r} models={models} onRetry={onRetry} disabled={running} />
             ))}
@@ -317,7 +317,7 @@ function ErrorNotice({
           </span>
         </AlertTitle>
         <AlertDescription className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1.5">
-          <div className="min-w-0 [overflow-wrap:anywhere] text-foreground">
+          <div className="min-w-0 wrap-anywhere text-foreground">
             {run.error.message}
             {view.hint && <span className="block text-muted-foreground">{view.hint}</span>}
           </div>
@@ -547,7 +547,7 @@ function Details({ rows }: { rows: Row[] }) {
   return (
     <Collapsible>
       <CollapsibleTrigger render={<Button variant="ghost" size="sm" className="group -ml-2 text-muted-foreground" />}>
-        <ChevronRight aria-hidden className="transition-transform group-data-[panel-open]:rotate-90" />
+        <ChevronRight aria-hidden className="transition-transform group-data-panel-open:rotate-90" />
         Kennzahlen im Detail
       </CollapsibleTrigger>
       <CollapsibleContent className="mt-1 pb-2 text-xs">

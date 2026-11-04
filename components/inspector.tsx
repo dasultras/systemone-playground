@@ -43,7 +43,7 @@ export function Inspector({ open, onOpenChange, models, states, modelId, onModel
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full gap-0 data-[side=right]:sm:max-w-[520px]">
+      <SheetContent side="right" className="w-full gap-0 data-[side=right]:sm:max-w-130">
         <SheetHeader className="border-b px-5 py-4">
           <SheetTitle className="text-[13px] font-semibold">Request-Inspektor</SheetTitle>
           <SheetDescription className="font-mono text-[11px]">
