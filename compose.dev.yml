@@ -3,3 +3,6 @@
 services:
   web:
     build: .
+
+include:
+  - compose.yml
