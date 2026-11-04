@@ -8,11 +8,11 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-## Befehle
+## Commands
 
-- `npm run dev` startet den Dev-Server auf :3000.
-- `npm run check` prüft Typen (tsc), Lint (OxLint) und Format (Prettier); `npm run fix` behebt Lint/Format.
-- `docker compose up` startet das veröffentlichte Image von ghcr.io (`compose.yml`).
-- `docker compose -f compose.yml -f compose.dev.yml up --build` baut das Image lokal (`compose.dev.yml` ergänzt nur `build`).
-- Ollama läuft in beiden Fällen nativ auf dem Host, der Container erreicht es über `host.docker.internal:11434`.
-- Images gehen nur bei Tags `v*.*.*` oder manuellem Dispatch nach ghcr.io.
+- `npm run dev` starts the dev server on :3000.
+- `npm run check` checks types (tsc), lint (OxLint) and format (Prettier); `npm run fix` fixes lint/format.
+- `docker compose up` starts the published image from ghcr.io (`compose.yml`).
+- `docker compose -f compose.yml -f compose.dev.yml up --build` builds the image locally (`compose.dev.yml` only adds `build`).
+- In both cases Ollama runs natively on the host; the container reaches it via `host.docker.internal:11434`.
+- Images are pushed to ghcr.io only on tags `v*.*.*` or manual dispatch.
