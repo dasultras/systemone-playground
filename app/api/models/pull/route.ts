@@ -1,21 +1,14 @@
 import { z } from "zod";
 import { findKnown } from "@/lib/models";
-import { ollamaBase, readKnown } from "@/lib/registry";
+import { ollamaBase, readKnown, reject, rejectForeign } from "@/lib/registry";
 
 // Leitet `POST /api/pull` von Ollama samt NDJSON-Fortschritt durch. Nur mit ALLOW_PULL=1, da es Plattenplatz belegt,
 // und nur für Modelle aus config/models.json, damit Ollama keine beliebigen Registries kontaktiert.
 const Body = z.object({ name: z.string() });
 
-const reject = (status: number, message: string) => Response.json({ error: { kind: "api", message } }, { status });
-
 export async function POST(req: Request) {
-  // Nur dieselbe Herkunft: Eine fremde Seite darf keinen Pull auf dem Host anstoßen. Ohne Origin (curl) ist es kein Browser.
-  const origin = req.headers.get("origin");
-  if (origin !== null && (!URL.canParse(origin) || new URL(origin).host !== req.headers.get("host")))
-    return reject(403, "Pull nur von derselben Herkunft.");
-  // Nur JSON: erzwingt bei fremden Origins zusätzlich einen CORS-Preflight, den die Route nicht beantwortet.
-  if (!req.headers.get("content-type")?.startsWith("application/json"))
-    return reject(415, "Erwartet Content-Type application/json.");
+  const foreign = rejectForeign(req);
+  if (foreign) return foreign;
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
   const name = findKnown(await readKnown(), parsed.success ? parsed.data.name.trim() : "")?.name;

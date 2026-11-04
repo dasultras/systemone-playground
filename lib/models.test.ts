@@ -10,6 +10,7 @@ import {
   modelColor,
   modelMeta,
   normRef,
+  ollamaId,
   parseModelId,
   pickDefault,
 } from "./models.ts";
@@ -45,6 +46,15 @@ test("colorsFor: bis zu sechs Modelle bekommen verschiedene Farben, die erste be
   assert.equal(new Set(Object.values(c)).size, 6);
   assert.equal(c[ids[0]], modelColor(ids[0]));
   assert.equal(colorsFor([...ids, "y"]).y.startsWith("var(--model-"), true);
+});
+
+test("ollamaId: Präfix, :latest fällt weg, andere Tags bleiben", () => {
+  assert.equal(ollamaId("clef-flash:latest"), "ollama:clef-flash");
+  assert.equal(ollamaId("elephant-1:9b-q4-ctx8k"), "ollama:elephant-1:9b-q4-ctx8k");
+  assert.equal(
+    ollamaId("hf.co/waseigo/elephant-1-decision-GGUF:latest"),
+    "ollama:hf.co/waseigo/elephant-1-decision-GGUF",
+  );
 });
 
 test("modelMeta: unbekannte ID stürzt nicht ab", () => {
