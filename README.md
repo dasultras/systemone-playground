@@ -108,7 +108,7 @@ npm run eval -- --limit 2    # smoke run
 npm run eval                 # 600 synthetic items, split 200/400, raw and averaged
 ```
 
-Runs against a running server (`--base-url`, default `:3100`) with `--models` (default
+Runs against a running server (`--base-url`, default `:3000`) with `--models` (default
 `ollama:elephant-1:9b-q4-ctx8k`). Answers are cached per question in `eval/out/raw/` (resumable), the report lands in
 `eval/out/report.md`. `typesafe:` models require `EVAL_ALLOW_TYPESAFE=1`.
 

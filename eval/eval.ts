@@ -23,7 +23,7 @@ import { generate, items, type Item } from "./items.ts";
  */
 const { values: args } = parseArgs({
   options: {
-    "base-url": { type: "string", default: "http://localhost:3100" },
+    "base-url": { type: "string", default: "http://localhost:3000" },
     models: { type: "string", default: "ollama:elephant-1:9b-q4-ctx8k" },
     average: { type: "string", default: "1,3" },
     limit: { type: "string" },
