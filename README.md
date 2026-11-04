@@ -89,8 +89,11 @@ otherwise the UI shows `ollama pull <name>` to copy. Pulling uses disk space on 
 
 Runs on a local backend are queued one after another, so the latency is the model's compute time; loading an Ollama
 model is measured and shown separately. The model picker shows which Ollama models are loaded and can load or unload
-them. Ollama keeps several models in memory (`OLLAMA_MAX_LOADED_MODELS`, default 3 per GPU) only while memory allows,
-otherwise it unloads the oldest and the UI says so.
+them. Ollama keeps several models only while memory allows, otherwise it unloads the oldest and the UI says so.
+
+How many models stay loaded and for how long is configured in Ollama itself, not here: `OLLAMA_MAX_LOADED_MODELS`
+(default 3 per GPU) and `OLLAMA_KEEP_ALIVE` (default `5m`). `OLLAMA_NUM_PARALLEL` only allows parallel requests to the
+same model and costs memory per model. On macOS, e.g. `launchctl setenv OLLAMA_KEEP_ALIVE 30m`, then restart Ollama.
 
 </details>
 
