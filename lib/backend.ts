@@ -15,7 +15,7 @@ import {
 } from "@typesafe-ai/sdk";
 import { computeMetrics } from "./metrics";
 import { unreachable } from "./models";
-import { ollamaBase } from "./registry";
+import { ollamaBase, ollamaLoaded } from "./registry";
 import { labelsFor } from "./questions";
 import { errorRun, type RunRequest } from "./run";
 import type { Backend, ModelInfo, ModelRun, Question, RunError } from "./types";
@@ -36,6 +36,24 @@ const CONFIG: Record<Backend, () => TypeSafeClientConfig> = {
 const clients: Partial<Record<Backend, TypeSafeClient>> = {};
 // Lazy, damit ein fehlender TYPESAFE_API_KEY nur TypeSafe-Läufe scheitern lässt.
 const client = (b: Backend) => (clients[b] ??= new TypeSafeClient(CONFIG[b]()));
+
+const queues: Partial<Record<Backend, Promise<unknown>>> = {};
+/** Lokale Backends rechnen ein Modell nach dem anderen; ohne Warteschlange enthielte die Latenz die Wartezeit auf andere. */
+function serial<T>(b: Backend, fn: () => Promise<T>): Promise<T> {
+  if (b === "typesafe") return fn();
+  const next = (queues[b] ?? Promise.resolve()).catch(() => undefined).then(fn);
+  queues[b] = next;
+  return next;
+}
+
+/** Lädt ein Ollama-Modell mit einer Mini-Frage, denn `/api/generate` lehnt reine Decision-Modelle ab. Dauer in ms. */
+async function warmUp(name: string, signal?: AbortSignal): Promise<number> {
+  const started = performance.now();
+  await client("ollama").systemOne({ model: name, state: ".", questions: { q: noul("?") } }, { signal });
+  return Math.round(performance.now() - started);
+}
+
+export const loadOllama = (name: string, signal?: AbortSignal) => serial("ollama", () => warmUp(name, signal));
 
 /** Choice mit `average` > 1: zyklisch verschobene Kopien unter `id~s`, gegen Positions-Bias. */
 const shifts = (q: Question, average: number) => (q.type === "choice" ? Math.min(average, q.options.length) : 1);
@@ -95,27 +113,37 @@ export async function runModel(
     state: facts.length ? { text: state, facts: Object.fromEntries(facts.map((f) => [f.key, f.value])) } : state,
     questions: toQuestions(questions, average),
   };
-  const started = performance.now();
-  const latency = () => Math.round(performance.now() - started);
-  try {
-    const response = await client(backend).systemOne(request, { signal });
-    const answers = questions.map((q) => {
-      const probs = probsOf(q, response.answers, average);
-      return { questionId: q.id, probs, metrics: computeMetrics(probs) };
-    });
-    const { input_tokens, output_tokens } = response.usage;
-    return {
-      modelId,
-      answers,
-      latencyMs: latency(),
-      tokensIn: input_tokens ?? 0,
-      tokensOut: output_tokens ?? 0,
-      averaged: average,
-      request,
-      response,
-    };
-  } catch (e) {
-    const response = e instanceof APIError ? e.body : null;
-    return errorRun(modelId, toError(e, backend), { latencyMs: latency(), averaged: average, request, response });
-  }
+  return serial(backend, async () => {
+    let started = performance.now();
+    const latency = () => Math.round(performance.now() - started);
+    let loadMs: number | undefined;
+    try {
+      // Laden getrennt messen, damit die Latenz nur die Rechenzeit zeigt.
+      if (backend === "ollama" && !(await ollamaLoaded().catch(() => [])).some((m) => m.id === id)) {
+        loadMs = await warmUp(request.model, signal);
+        started = performance.now();
+      }
+      const response = await client(backend).systemOne(request, { signal });
+      const answers = questions.map((q) => {
+        const probs = probsOf(q, response.answers, average);
+        return { questionId: q.id, probs, metrics: computeMetrics(probs) };
+      });
+      const { input_tokens, output_tokens } = response.usage;
+      return {
+        modelId,
+        answers,
+        latencyMs: latency(),
+        loadMs,
+        tokensIn: input_tokens ?? 0,
+        tokensOut: output_tokens ?? 0,
+        averaged: average,
+        request,
+        response,
+      };
+    } catch (e) {
+      const response = e instanceof APIError ? e.body : null;
+      const rest = { latencyMs: latency(), loadMs, averaged: average, request, response };
+      return errorRun(modelId, toError(e, backend), rest);
+    }
+  });
 }

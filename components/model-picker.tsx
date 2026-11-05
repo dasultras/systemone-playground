@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy, RotateCw, TriangleAlert } from "lucide-react";
+import { Check, Copy, LoaderCircle, RotateCw, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -9,13 +9,41 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fmtInt, overLimit } from "@/lib/limits";
 import { fmtNum, fmtPct } from "@/lib/metrics";
-import { BACKEND_LABEL, colorsFor, modelMeta } from "@/lib/models";
+import { BACKEND_LABEL, colorsFor, modelMeta, setLoaded } from "@/lib/models";
 import { PULL_START, pullModel, statusText, type PullProgress } from "@/lib/pull";
-import type { KnownModel, ModelId, ModelsResponse } from "@/lib/types";
+import type { KnownModel, LoadedModel, ModelId, ModelsResponse } from "@/lib/types";
 import { Group } from "./group";
 import { Dot } from "./viz";
 
 export const MAX_MODELS = 3;
+
+const gb = (bytes: number) => `${fmtNum(bytes / 2 ** 30, 1)} GB`;
+const labels = (ids: ModelId[]) => ids.map((id) => modelMeta(id).label).join(", ");
+
+/**
+ * Lädt oder entlädt Ollama-Modelle nacheinander und meldet, was Ollama dabei verdrängt hat:
+ * Es hält mehrere Modelle nur, solange der Speicher reicht.
+ */
+async function toggleLoaded(ids: ModelId[], unload: boolean, before: LoadedModel[]) {
+  let after = before;
+  let ms = 0;
+  for (const id of ids) {
+    // oxlint-disable-next-line no-await-in-loop -- Ollama lädt ohnehin eins nach dem anderen
+    const r = await setLoaded(id, unload);
+    after = r.loaded;
+    ms += r.loadMs ?? 0;
+  }
+  // Verdrängt sind vorher geladene und gerade geladene Modelle, die Ollama nicht mehr hält.
+  const kept = new Set(after.map((a) => a.id));
+  const lost = [...new Set([...before.map((b) => b.id), ...(unload ? [] : ids)])].filter(
+    (id) => !kept.has(id) && !(unload && ids.includes(id)),
+  );
+  toast(unload ? `${labels(ids)} entladen` : `${labels(ids)} geladen in ${fmtNum(ms / 1000, 1)} s`, {
+    description: lost.length
+      ? `Ollama hat ${labels(lost)} wieder entladen, der Speicher reicht nicht für alle gleichzeitig.`
+      : undefined,
+  });
+}
 
 type Props = {
   /** `null`, solange `/api/models` noch lädt. */
@@ -34,6 +62,19 @@ export function ModelPicker({ catalog, selected, onSelected, tokens, onRefresh }
   const rows = [...available.map((m) => ({ m, gone: false })), ...missing.map((m) => ({ m, gone: true }))];
   const known = catalog?.known ?? [];
   const colors = colorsFor(selected);
+  const loaded = catalog?.loaded ?? [];
+  const isLoaded = (id: ModelId) => loaded.some((l) => l.id === id);
+  const local = selected.filter((id) => available.some((m) => m.id === id && m.backend === "ollama"));
+  const toLoad = local.filter((id) => !isLoaded(id));
+  const [busy, setBusy] = useState<ModelId[]>([]);
+
+  const load = (ids: ModelId[], unload = false) => {
+    setBusy(ids);
+    toggleLoaded(ids, unload, loaded)
+      .catch((e) => toast(`Ollama: ${e instanceof Error ? e.message : String(e)}`))
+      .then(onRefresh)
+      .finally(() => setBusy([]));
+  };
 
   const setModel = (id: ModelId, on: boolean, gone: boolean) => {
     if (!on && (selected.length > 1 || gone)) onSelected(selected.filter((m) => m !== id));
@@ -45,7 +86,13 @@ export function ModelPicker({ catalog, selected, onSelected, tokens, onRefresh }
       title="Modelle"
       aside={
         <span className="flex items-center gap-1 text-xs text-muted-foreground">
-          bis zu {MAX_MODELS} zum Vergleich
+          {local.length > 1 && toLoad.length > 0 ? (
+            <Button variant="ghost" size="sm" disabled={busy.length > 0} onClick={() => load(toLoad)} className="-my-1">
+              Auswahl laden
+            </Button>
+          ) : (
+            `bis zu ${MAX_MODELS} zum Vergleich`
+          )}
           <Button
             variant="ghost"
             size="icon-sm"
@@ -97,6 +144,11 @@ export function ModelPicker({ catalog, selected, onSelected, tokens, onRefresh }
               <span className="block truncate text-xs text-muted-foreground">
                 {BACKEND_LABEL[m.backend]}, {m.size}
               </span>
+              {m.backend === "ollama" && isLoaded(m.id) && (
+                <span className="block truncate text-xs text-ok">
+                  geladen · {gb(loaded.find((l) => l.id === m.id)!.vramBytes)}
+                </span>
+              )}
               {m.backend === "vllm" && (
                 <span className="block truncate text-xs text-muted-foreground">
                   Modell wird beim Start von vLLM festgelegt
@@ -110,6 +162,19 @@ export function ModelPicker({ catalog, selected, onSelected, tokens, onRefresh }
                 {fmtInt(tokens)} / {fmtInt(m.contextTokens)}
                 {over && <span className="sr-only"> überschreitet das Limit</span>}
               </span>
+            )}
+            {m.backend === "ollama" && !gone && (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={busy.length > 0}
+                onClick={() => load([m.id], isLoaded(m.id))}
+                aria-label={`${m.label} ${isLoaded(m.id) ? "entladen" : "laden"}`}
+                className="text-muted-foreground"
+              >
+                {busy.includes(m.id) && <LoaderCircle aria-hidden className="animate-spin" />}
+                {isLoaded(m.id) ? "Entladen" : "Laden"}
+              </Button>
             )}
           </Label>
         );

@@ -166,6 +166,8 @@ export function Playground({ presets }: { presets: Preset[] }) {
       }),
     );
     if (ctrl.signal.aborted) return;
+    // Ein Lauf lädt Modelle und kann andere verdrängen; die Liste zeigt danach den neuen Stand.
+    loadModels();
     const q1 = sent[0].text;
     const id = uid("h");
     writeHistory([
@@ -182,7 +184,7 @@ export function Playground({ presets }: { presets: Preset[] }) {
       ...readHistory(),
     ]);
     setActiveId(id);
-  }, [state, facts, questions, average, models, presetId, mode, title]);
+  }, [state, facts, questions, average, models, presetId, mode, title, loadModels]);
 
   /** Wiederholt nur ein Modell mit demselben Request und ersetzt dessen Lauf im aktiven Verlaufseintrag. */
   const retry = async (modelId: ModelId) => {

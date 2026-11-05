@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { z } from "zod";
 import {
   TYPESAFE_MODELS,
+  ollamaId,
   fromOllama,
   fromVllm,
   mergeKnown,
@@ -13,7 +14,7 @@ import {
   type OllamaShow,
   type OllamaTag,
 } from "./models";
-import type { KnownModel, ModelInfo, ModelsResponse } from "./types";
+import type { KnownModel, LoadedModel, ModelInfo, ModelsResponse } from "./types";
 
 /** Kurzer Cache im Speicher, damit nicht jeder Seitenaufruf und jeder Lauf alle Backends abfragt. */
 const TTL = 30_000;
@@ -49,6 +50,32 @@ export const ollamaBase = () => process.env.OLLAMA_BASE_URL ?? "http://localhost
 
 /** Pullen nur mit `ALLOW_PULL=1` und aktivem Ollama; es belegt Plattenplatz auf dem Host. */
 export const pullAllowed = () => process.env.ALLOW_PULL === "1" && Boolean(ollamaBase());
+
+export const reject = (status: number, message: string) =>
+  Response.json({ error: { kind: "api", message } }, { status });
+
+/** Nur dieselbe Herkunft und nur JSON: Eine fremde Seite darf nichts auf dem Host anstoßen. Ohne Origin (curl) ist es kein Browser. */
+export function rejectForeign(req: Request): Response | null {
+  const origin = req.headers.get("origin");
+  if (origin !== null && (!URL.canParse(origin) || new URL(origin).host !== req.headers.get("host")))
+    return reject(403, "Nur von derselben Herkunft.");
+  // Nur JSON: erzwingt bei fremden Origins zusätzlich einen CORS-Preflight, den die Routen nicht beantworten.
+  if (!req.headers.get("content-type")?.startsWith("application/json"))
+    return reject(415, "Erwartet Content-Type application/json.");
+  return null;
+}
+
+/** Von Ollama geladene Modelle (`/api/ps`) mit belegtem Grafikspeicher. */
+export async function ollamaLoaded(): Promise<LoadedModel[]> {
+  const base = ollamaBase();
+  if (!base) return [];
+  const { models }: { models: { name: string; size_vram: number }[] } = await getJson(`${base}/api/ps`);
+  return models.map((m) => ({ id: ollamaId(m.name), vramBytes: m.size_vram }));
+}
+
+/** Entlädt sofort; `/api/generate` nimmt `keep_alive: 0` auch für reine Decision-Modelle an, Laden dagegen nicht. */
+export const unloadOllama = (name: string) =>
+  getJson(`${ollamaBase()}/api/generate`, { method: "POST", body: JSON.stringify({ model: name, keep_alive: 0 }) });
 
 const KNOWN_FILE = "config/models.json";
 const KnownFile = z.array(
