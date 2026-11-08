@@ -87,6 +87,11 @@ Any server that speaks the System One schema (`/v1/systemone`) works via its bas
 installiert". With `ALLOW_PULL=1` a button pulls them via `POST /api/models/pull` (only listed models, same origin),
 otherwise the UI shows `ollama pull <name>` to copy. Pulling uses disk space on the host.
 
+Local runs are queued, so latency is pure compute time; Ollama load time is shown separately.
+
+**Ollama only**, set on the Ollama server: `OLLAMA_MAX_LOADED_MODELS` (models in memory, memory permitting),
+`OLLAMA_KEEP_ALIVE` (default `5m`), `OLLAMA_NUM_PARALLEL` (parallel requests per model, not more models).
+
 </details>
 
 <details>

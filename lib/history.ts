@@ -130,6 +130,7 @@ export function toCsv(entries: HistoryEntry[]): string {
     "margin",
     "entropie",
     "latenz_ms",
+    "laden_ms",
     "fehler",
   ];
   const rows: (string | number)[][] = [];
@@ -149,6 +150,7 @@ export function toCsv(entries: HistoryEntry[]): string {
           a ? a.metrics.margin.toFixed(4) : "",
           a ? a.metrics.entropy.toFixed(4) : "",
           r.latencyMs,
+          r.loadMs ?? "",
           r.error?.kind ?? "",
         ]);
       }

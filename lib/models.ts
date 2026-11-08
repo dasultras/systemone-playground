@@ -1,4 +1,4 @@
-import type { Backend, KnownModel, ModelId, ModelInfo, ModelsResponse } from "./types";
+import type { Backend, KnownModel, LoadedModel, ModelId, ModelInfo, ModelsResponse } from "./types";
 
 // Rein und ohne server-only: Client, Server, Tests und Eval nutzen dieselben Helfer.
 
@@ -19,6 +19,10 @@ export function parseModelId(id: string): { backend: Backend; name: string } | n
   const m = /^(ollama|vllm|typesafe):(.+)$/.exec(id);
   return m ? { backend: m[1] as Backend, name: m[2] } : null;
 }
+
+/** Ollama löst Namen ohne Tag zu `:latest` auf; ohne Tag passen auch alte IDs wie `clef-flash`. */
+const untagged = (name: string) => name.replace(/:latest$/, "");
+export const ollamaId = (name: string): ModelId => `ollama:${untagged(name)}`;
 
 /** Gespeicherte IDs ohne Präfix (vor der freien Modellwahl) gehörten zu Ollama, außer Jev. */
 export function legacyModelId(id: string): ModelId {
@@ -89,8 +93,7 @@ export function fromOllama(tag: OllamaTag, show: OllamaShow): ModelInfo | null {
   const ctx = numCtx ? Number(numCtx[1]) : Number(key && show.model_info?.[key]) || 0;
   const d = { ...show.details, ...tag.details };
   const size = [d.parameter_size, d.quantization_level, ctxLabel(ctx)].filter(Boolean).join(" · ");
-  // Ollama löst Namen ohne Tag zu `:latest` auf; so passen auch alte IDs wie `clef-flash`.
-  return info("ollama", tag.name.replace(/:latest$/, ""), ctx, size);
+  return info("ollama", untagged(tag.name), ctx, size);
 }
 
 export function fromVllm(m: { id: string; max_model_len?: number }): ModelInfo {
@@ -128,4 +131,16 @@ export async function fetchModels(refresh = false): Promise<ModelsResponse> {
   const res = await fetch(`/api/models${refresh ? "?refresh=1" : ""}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
+}
+
+/** Lädt ein Ollama-Modell in den Speicher oder entlädt es; liefert die Ladezeit und was danach geladen ist. */
+export async function setLoaded(id: ModelId, unload = false): Promise<{ loadMs?: number; loaded: LoadedModel[] }> {
+  const res = await fetch("/api/models/load", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ id, unload }),
+  });
+  const json = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(json?.error?.message ?? `HTTP ${res.status}`);
+  return json;
 }

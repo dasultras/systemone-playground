@@ -31,6 +31,20 @@ type Props = {
   toolbar: ReactNode;
 };
 
+const secs = (ms: number) => `${fmtNum(ms / 1000, 1)} s`;
+
+/** Rechenzeit, darunter das Laden, falls das Modell erst geladen werden musste. */
+function Latency({ run }: { run: ModelRun }) {
+  return (
+    <>
+      {secs(run.latencyMs)}
+      {run.loadMs !== undefined && (
+        <span className="block text-xs text-muted-foreground">+ {secs(run.loadMs)} Laden</span>
+      )}
+    </>
+  );
+}
+
 const stateOf = (states: States, id: ModelId): ModelState => states[id] ?? { status: "idle" };
 const answerOf = (s: ModelState, qid: string): Answer | undefined =>
   s.status === "done" ? s.run.answers.find((a) => a.questionId === qid) : undefined;
@@ -185,7 +199,7 @@ function RunTable({ models, states, onInspect }: Pick<Props, "models" | "states"
                     ))}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {s.status === "done" ? `${fmtNum(s.run.latencyMs / 1000, 1)} s` : "–"}
+                  {s.status === "done" ? <Latency run={s.run} /> : "–"}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
                   {s.status === "done" ? `${fmtInt(s.run.tokensIn)} / ${fmtInt(s.run.tokensOut)}` : "–"}
@@ -598,7 +612,10 @@ function SingleMeta({ id, state, onInspect }: { id: ModelId; state: ModelState; 
   return (
     <>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-1 px-1 text-xs text-muted-foreground">
-        <span className="tabular-nums">{fmtNum(state.run.latencyMs / 1000, 1)} s</span>
+        <span className="tabular-nums">
+          {secs(state.run.latencyMs)}
+          {state.run.loadMs !== undefined && ` + ${secs(state.run.loadMs)} Laden`}
+        </span>
         <span className="tabular-nums">
           {fmtInt(state.run.tokensIn)} Tokens ein, {fmtInt(state.run.tokensOut)} aus
         </span>

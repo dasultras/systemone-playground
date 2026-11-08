@@ -47,7 +47,11 @@ export type ModelsResponse = {
   known?: KnownModel[];
   /** Pullen aus der UI erlaubt (`ALLOW_PULL=1` und Ollama aktiv). */
   pull?: boolean;
+  /** Gerade von Ollama geladene Modelle, bei jedem Abruf frisch aus `/api/ps`. */
+  loaded?: LoadedModel[];
 };
+
+export type LoadedModel = { id: ModelId; vramBytes: number };
 
 export type Fact = { key: string; value: string };
 
@@ -92,7 +96,10 @@ export type ModelRun = {
   modelId: ModelId;
   error?: RunError;
   answers: Answer[];
+  /** Reine Rechenzeit des Modells, ohne Warten auf andere Modelle und ohne Laden. */
   latencyMs: number;
+  /** Laden des Modells vor dem Lauf; fehlt, wenn es schon geladen war. */
+  loadMs?: number;
   tokensIn: number;
   tokensOut: number;
   averaged: number;
